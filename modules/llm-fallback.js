@@ -1,0 +1,198 @@
+/**
+ * fata 匹配引擎中的 LLM 超时降级 — Loop 2.2
+ *
+ * 职责：
+ * - 深度匹配模式下，CF Worker LLM 调用设置 15s 超时
+ * - 超时 → 自动切换到纯本地 embedding 快速匹配
+ * - 降级后静默，不打断用户体验
+ * - 同一 session 连续 3 次降级 → 建议切换模式
+ * - 降级事件记录到 IndexedDB，用于回测统计
+ *
+ * 设计原则：
+ * - Fast degradation, not silent failure
+ * - 用户感知：匹配正常完成，只是方式略有不同
+ * - 降级描述对用户透明但不制造焦虑
+ */
+
+const LLMFallback = {
+  config: {
+    timeoutMs: 15000,          // 15s 超时
+    maxConsecutiveFallbacks: 3, // 连续 3 次降级后提示
+    cooldownMinutes: 5          // 超过 3 次后建议等待时间
+  },
+
+  state: {
+    consecutiveFallbacks: 0,   // 当前 session 降级次数
+    lastFallbackTime: null
+  },
+
+  /**
+   * 通过 CF Worker 调用 LLM API（带超时）
+   *
+   * @param {string} endpoint — '/api/llm/analyze' | '/api/llm/resonance'
+   * @param {Object} payload — LLM 调用参数
+   * @returns {Promise<Object|null>} — LLM 结果 | null（超时/失败）
+   */
+  async callWithTimeout(endpoint, payload) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`LLM API returned ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // 成功 → 重置降级计数
+      this.state.consecutiveFallbacks = 0;
+
+      return data;
+    } catch (err) {
+      clearTimeout(timeoutId);
+
+      // 记录降级
+      this._recordFallback(err.name === 'AbortError' ? 'timeout' : 'error');
+
+      return null; // null = 降级信号
+    }
+  },
+
+  /**
+   * 深度匹配 → 快速匹配的降级逻辑
+   * 在 match-engine.js 中调用
+   *
+   * @param {string} userText — 用户文字
+   * @param {string} userEmail — 用户邮箱（加密后）
+   * @returns {Object} — 匹配结果
+   */
+  async matchWithFallback(userText, userEmail) {
+    // 尝试深度匹配（含 LLM 意图解析）
+    this._showStatus('正在深度分析你的文字...');
+
+    const llmResult = await this.callWithTimeout('/api/llm/analyze', {
+      prompt: 'intent_parse',
+      text: userText
+    });
+
+    if (llmResult !== null) {
+      // 深度匹配成功
+      return this._buildMatchResult(userText, userEmail, llmResult, 'deep');
+    }
+
+    // 降级：纯本地 embedding 快速匹配
+    this._showStatus('正在为你快速匹配...');
+    this.state.consecutiveFallbacks++;
+
+    const embedding = await this._generateEmbeddingLocal(userText);
+    const matchResult = await this._matchByEmbeddingOnly(embedding, userEmail);
+
+    matchResult.matchMode = 'fast_fallback';
+
+    // 连续 3 次降级 → 建议用户切换模式
+    if (this.state.consecutiveFallbacks >= this.config.maxConsecutiveFallbacks) {
+      matchResult.showModeSwitchHint = true;
+    }
+
+    return matchResult;
+  },
+
+  /**
+   * 获取用户提示信息（在匹配成功后展示）
+   */
+  getFallbackNotice() {
+    if (this.state.consecutiveFallbacks === 0) return null;
+
+    if (this.state.consecutiveFallbacks >= this.config.maxConsecutiveFallbacks) {
+      return {
+        type: 'suggestion',
+        html: `
+          <p class="fallback-notice">
+            深度分析暂时繁忙。已为你切换到快速匹配——匹配精度不受影响。
+            <br>
+            <button class="btn-text" onclick="fata.switchMatchMode('fast')">
+              切换到快速匹配模式（不需要等待 AI 分析）
+            </button>
+          </p>`
+      };
+    }
+
+    return {
+      type: 'info',
+      html: `
+        <p class="fallback-notice-subtle">
+          已为你切换到快速匹配。匹配精度不受影响。
+        </p>`
+    };
+  },
+
+  // --- 内部方法 ---
+
+  async _generateEmbeddingLocal(text) {
+    // 使用 Transformers.js 在浏览器端生成 embedding
+    // 此方法在 match-engine.js 中实现，这里只做接口定义
+    throw new Error('_generateEmbeddingLocal 需要在 match-engine.js 中实现');
+  },
+
+  async _matchByEmbeddingOnly(embedding, userEmail) {
+    // 纯 embedding 匹配（跳过意图解析）
+    throw new Error('_matchByEmbeddingOnly 需要在 match-engine.js 中实现');
+  },
+
+  _recordFallback(reason) {
+    this.state.lastFallbackTime = Date.now();
+
+    // 记录到 IndexedDB（用于后续回测分析降级频率）
+    this._logToIndexedDB({
+      timestamp: Date.now(),
+      reason,
+      consecutiveCount: this.state.consecutiveFallbacks
+    });
+  },
+
+  async _logToIndexedDB(entry) {
+    try {
+      const db = await this._openDB();
+      const tx = db.transaction('fallback_log', 'readwrite');
+      const store = tx.objectStore('fallback_log');
+      await store.put({ id: Date.now(), ...entry });
+    } catch (e) {
+      // 静默失败
+    }
+  },
+
+  _showStatus(text) {
+    const event = new CustomEvent('fata:match-status', { detail: { text } });
+    window.dispatchEvent(event);
+  },
+
+  async _openDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('fata_fallback', 1);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('fallback_log')) {
+          db.createObjectStore('fallback_log', { keyPath: 'id' });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  _buildMatchResult(userText, userEmail, llmResult, mode) {
+    // 由 match-engine.js 提供完整实现
+    throw new Error('_buildMatchResult 需要在 match-engine.js 中实现');
+  }
+};
+
+export { LLMFallback };

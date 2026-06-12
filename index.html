@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>fata — 找到文字频率最接近的陌生人</title>
+
+<!-- CSP -->
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'self';
+  script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+  style-src 'self' 'unsafe-inline';
+  connect-src 'self' https://worker.fata.uk https://api.github.com https://gitee.com;
+  img-src 'self' data:;
+  font-src 'self';
+  worker-src 'self' blob:;
+  media-src 'none';
+  object-src 'none';">
+
+<style>
+/* ===== fata 品牌样式 ===== */
+:root {
+  --bg: #faf9f6;
+  --bg-card: #fff;
+  --text: #2a2a2a;
+  --text-subtle: #8a8a8a;
+  --text-whisper: #bbb;
+  --border: #e8e4dc;
+  --border-faint: #f0ebe0;
+  --accent: #2a2a2a;
+  --accent-ghost: rgba(42,42,42,0.06);
+  --font-serif: Georgia, 'Noto Serif SC', serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --radius: 4px;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.04);
+  --max-width: 560px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== 布局 ===== */
+.page {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+  min-height: 100vh;
+}
+
+/* ===== 首页 ===== */
+.landing {
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 80px; text-align: center;
+}
+.landing-title {
+  font-family: var(--font-serif);
+  font-size: 20px; font-weight: normal; color: var(--text);
+  margin-bottom: 40px; line-height: 1.8;
+}
+.landing-editor {
+  width: 100%; max-width: 480px; margin-bottom: 16px;
+}
+.landing-editor textarea {
+  width: 100%; min-height: 160px; padding: 20px 24px;
+  font-family: var(--font-serif); font-size: 15px; line-height: 2;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-card); color: var(--text);
+  resize: vertical; outline: none;
+  box-shadow: var(--shadow-card);
+}
+.landing-editor textarea::placeholder {
+  color: var(--text-whisper); font-style: italic;
+}
+/* 起笔提示 */
+.writing-prompts {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+  margin-bottom: 24px; max-width: 480px;
+}
+.writing-prompt {
+  font-size: 13px; color: var(--text-subtle); padding: 6px 12px;
+  border: 1px solid var(--border-faint); border-radius: 16px;
+  cursor: pointer; background: transparent; font-family: var(--font-sans);
+}
+.writing-prompt:hover { border-color: var(--text-subtle); }
+
+/* 写作启发片段 */
+.snippet-scroll {
+  margin-bottom: 32px; max-width: 480px; width: 100%;
+}
+.snippet-item {
+  font-family: var(--font-serif); font-size: 13px; color: var(--text-whisper);
+  line-height: 1.8; margin-bottom: 12px; font-style: italic;
+  text-align: left; padding-left: 12px; border-left: 1px solid var(--border-faint);
+}
+.snippet-label {
+  font-size: 11px; color: var(--text-whisper); text-align: left;
+  margin-bottom: 12px; text-transform: none;
+}
+
+/* 隐私选择行 */
+.privacy-options {
+  display: flex; gap: 24px; justify-content: center; margin-bottom: 24px;
+  font-size: 13px; color: var(--text-subtle);
+}
+.privacy-options label { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.privacy-options input[type=checkbox] { accent-color: var(--accent); }
+
+/* 匹配模式选择 */
+.match-mode-selector {
+  display: flex; gap: 8px; justify-content: center; margin-bottom: 24px;
+}
+.match-mode-btn {
+  font-size: 12px; padding: 6px 14px; border-radius: 16px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-subtle); cursor: pointer; font-family: var(--font-sans);
+}
+.match-mode-btn.active {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+
+/* 投递按钮 */
+.btn-deliver {
+  font-family: var(--font-serif); font-size: 16px;
+  padding: 12px 40px; border: none; border-radius: var(--radius);
+  background: var(--accent); color: #fff; cursor: pointer;
+  transition: opacity 0.2s;
+}
+.btn-deliver:hover { opacity: 0.85; }
+.btn-deliver:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ===== 等待界面 ===== */
+.waiting-container {
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 80px; text-align: center;
+}
+.waiting-wave {
+  width: 120px; height: 60px; margin-bottom: 32px;
+  /* 波形动画 — CSS 简化版 */
+  display: flex; align-items: flex-end; justify-content: center; gap: 4px;
+}
+.wave-bar {
+  width: 6px; background: var(--accent); border-radius: 3px;
+  animation: wave 1.2s ease-in-out infinite;
+}
+.wave-bar:nth-child(1) { height: 20px; animation-delay: 0s; }
+.wave-bar:nth-child(2) { height: 36px; animation-delay: 0.15s; }
+.wave-bar:nth-child(3) { height: 28px; animation-delay: 0.3s; }
+.wave-bar:nth-child(4) { height: 44px; animation-delay: 0.45s; }
+.wave-bar:nth-child(5) { height: 24px; animation-delay: 0.6s; }
+@keyframes wave { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(0.4); } }
+
+.waiting-text { font-family: var(--font-serif); font-size: 16px; color: var(--text); }
+.waiting-sub { font-size: 13px; color: var(--text-subtle); margin-top: 8px; }
+
+/* ===== 匹配成功页 ===== */
+.match-result { padding-top: 40px; max-width: 480px; margin: 0 auto; }
+.resonance-block {
+  font-family: var(--font-serif); font-size: 18px; line-height: 2;
+  color: var(--text); margin-bottom: 32px; text-align: center;
+}
+.other-text-block {
+  border-left: 2px solid var(--border); padding-left: 16px;
+  margin-bottom: 24px;
+}
+.other-text-label { font-size: 13px; color: var(--text-whisper); margin-bottom: 8px; }
+.other-text-content {
+  font-family: var(--font-serif); font-size: 14px; font-style: italic;
+  color: var(--text-subtle); line-height: 1.9;
+}
+.email-block {
+  background: var(--accent-ghost); padding: 20px 24px; border-radius: var(--radius);
+  margin-bottom: 24px; text-align: center;
+}
+.email-label { font-size: 13px; color: var(--text-whisper); margin-bottom: 6px; }
+.email-address {
+  font-size: 18px; font-weight: bold; color: var(--text);
+  font-family: var(--font-mono, monospace); letter-spacing: 0.5px;
+  word-break: break-all;
+}
+.icebreakers { margin-bottom: 32px; }
+.icebreaker-item {
+  font-size: 14px; color: var(--text-subtle); line-height: 1.8;
+  padding: 8px 0; cursor: pointer; transition: color 0.15s;
+}
+.icebreaker-item:hover { color: var(--text); }
+.icebreaker-label { font-size: 13px; color: var(--text-whisper); margin-bottom: 8px; }
+
+.actions-row { display: flex; gap: 12px; justify-content: center; }
+.btn-email {
+  font-family: var(--font-serif); font-size: 15px;
+  padding: 12px 32px; border-radius: var(--radius);
+  background: var(--accent); color: #fff; text-decoration: none; cursor: pointer;
+  border: none; display: inline-block;
+}
+.btn-email:hover { opacity: 0.85; }
+.btn-secondary {
+  font-size: 14px; padding: 12px 24px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text); cursor: pointer; font-family: var(--font-sans);
+}
+
+/* ===== 无匹配等待页 ===== */
+.no-match {
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 80px; text-align: center;
+}
+.no-match-main {
+  font-family: var(--font-serif); font-size: 18px; margin-bottom: 16px;
+}
+.no-match-sub { font-size: 14px; color: var(--text-subtle); margin-bottom: 32px; }
+.echo-snippet {
+  font-family: var(--font-serif); font-size: 14px; font-style: italic;
+  color: var(--text-whisper); max-width: 400px; line-height: 1.9;
+  padding: 16px 20px; border: 1px dashed var(--border-faint);
+  border-radius: var(--radius); margin-bottom: 24px;
+}
+
+/* ===== AI 采访模式 ===== */
+.interview-container { padding-top: 40px; max-width: 480px; margin: 0 auto; }
+.interview-messages { margin-bottom: 24px; }
+.interview-msg {
+  font-size: 15px; line-height: 1.8; margin-bottom: 16px; padding: 12px 16px;
+  border-radius: var(--radius); max-width: 85%;
+}
+.interview-msg.ai {
+  background: var(--accent-ghost); color: var(--text);
+  margin-right: auto; font-family: var(--font-serif);
+}
+.interview-msg.user {
+  background: var(--bg-card); color: var(--text);
+  margin-left: auto; border: 1px solid var(--border-faint);
+  text-align: right;
+}
+.interview-input-row { display: flex; gap: 8px; }
+.interview-input {
+  flex: 1; padding: 10px 14px; font-size: 14px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-card); font-family: var(--font-sans);
+}
+.interview-send {
+  padding: 10px 18px; font-size: 14px; border-radius: var(--radius);
+  background: var(--accent); color: #fff; border: none; cursor: pointer;
+}
+
+/* ===== 回访用户首页 ===== */
+.returning-home { padding-top: 40px; max-width: 480px; margin: 0 auto; }
+.returning-summary {
+  font-family: var(--font-serif); font-size: 16px; margin-bottom: 32px;
+  text-align: center; line-height: 1.8;
+}
+.text-history-item {
+  padding: 14px 16px; border: 1px solid var(--border-faint);
+  border-radius: var(--radius); margin-bottom: 10px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.text-history-date { font-size: 12px; color: var(--text-whisper); }
+.text-history-topic { font-size: 14px; color: var(--text); }
+.text-history-status {
+  font-size: 12px; padding: 2px 8px; border-radius: 10px;
+}
+.status-pending { background: #ddf4e8; color: #1a7f4b; }
+.status-matched { background: #e8e0f0; color: #6b4d8a; }
+.status-expired { background: #fce4e4; color: #c42e2e; }
+
+/* ===== 加载/进度 ===== */
+.model-loading { text-align: center; padding-top: 80px; }
+.progress-bar {
+  width: 200px; height: 3px; background: var(--border-faint);
+  border-radius: 2px; margin: 16px auto; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: var(--accent); border-radius: 2px;
+  transition: width 0.3s;
+}
+
+/* ===== 遮罩 (微信/QQ引导) ===== */
+.browser-guide-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.browser-guide-box {
+  background: var(--bg-card); padding: 32px 28px; border-radius: var(--radius);
+  text-align: center; max-width: 320px; font-size: 14px; line-height: 1.8;
+}
+.browser-guide-box .arrow-icon { font-size: 32px; margin-bottom: 12px; }
+
+/* ===== 底部 ===== */
+.footer {
+  max-width: var(--max-width); margin: 80px auto 0; padding: 24px 0;
+  border-top: 1px solid var(--border-faint); text-align: center;
+  font-size: 11px; color: var(--text-whisper); line-height: 2;
+}
+.footer a { color: var(--text-subtle); }
+.footer-resources { margin-top: 8px; color: var(--text-whisper); }
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 414px) {
+  .page { padding: 24px 16px 60px; }
+  .landing { padding-top: 40px; }
+  .landing-title { font-size: 17px; }
+  .resonance-block { font-size: 16px; }
+  .email-address { font-size: 15px; }
+  .actions-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 主容器 ===== -->
+<div id="app" class="page"></div>
+
+<!-- ===== 底部 ===== -->
+<footer class="footer" id="page-footer" style="display:none;">
+  <p>通信在你自己的邮箱中进行。fata 只是一个引介工具——不存储、不查看、不参与你们的对话。</p>
+  <p>
+    <a href="https://github.com/your-username/fata" target="_blank">GitHub 开源</a>
+    &nbsp;·&nbsp;
+    <a href="https://afdian.net/a/fata" target="_blank">爱发电</a>
+    &nbsp;·&nbsp;
+    <a href="#" id="feedback-link">反馈与帮助</a>
+  </p>
+  <p class="footer-resources">
+    需要找人聊聊？心理援助热线 010-82951332 · 生命热线 400-161-9995 · 24小时 · 免费 · 匿名
+  </p>
+</footer>
+
+<!-- ===== 模块脚本 ===== -->
+<script type="module">
+  /**
+   * fata 主应用 — index.html
+   * 加载顺序: config → modules → UI 初始化
+   */
+
+  import { ModelLoader } from './modules/model-loader.js';
+  import { SafetyHandler } from './modules/safety-handler.js';
+  import { LLMFallback } from './modules/llm-fallback.js';
+  import { LowSignalGuide } from './modules/low-signal-guide.js';
+  import { ResendRetry } from './modules/resend-retry.js';
+  import { MatchEngine } from './modules/match-engine.js';
+
+  // ===== 全局状态 =====
+  const state = {
+    userEmail: null,           // 用户邮箱
+    currentText: null,         // 当前编辑的文字
+    intentProfile: null,       // LLM 意图解析结果
+    matchMode: 'deep',         // 'deep' | 'fast'
+    showTextToMatch: true,     // 是否允许展示文字给对方
+    isReturningUser: false,    // 是否为回访用户
+    modelStatus: 'idle',       // 'idle' | 'loading' | 'ready' | 'fallback'
+    pendingTexts: [],          // 历史文字列表
+    currentMatch: null,        // 当前匹配结果
+    draft: null               // 草稿
+  };
+
+  // ===== 初始化 =====
+  async function init() {
+    // 检测浏览器环境
+    if (isWeChatOrQQ()) {
+      showBrowserGuide();
+    }
+
+    // 检查草稿
+    state.draft = LowSignalGuide.loadDraft();
+
+    // 检查是否为回访用户
+    const history = loadFromIndexedDB('fata_history');
+    if (history && history.length > 0) {
+      state.isReturningUser = true;
+      state.pendingTexts = history;
+    }
+
+    // 加载模型
+    renderModelLoading();
+    const result = await ModelLoader.initialize(onModelProgress);
+
+    if (result.mode === 'full') {
+      state.modelStatus = 'ready';
+      await MatchEngine.initialize(result);
+    } else {
+      state.modelStatus = 'fallback';
+      // 在降级模式下初始化（使用 TF-IDF）
+      // TODO: 实现 TF-IDF 降级初始化
+    }
+
+    // 渲染首页
+    renderHome();
+  }
+
+  function onModelProgress(pct, text) {
+    document.querySelector('.progress-fill').style.width = pct + '%';
+    document.querySelector('.progress-text').textContent = text;
+  }
+
+  // ===== 页面渲染 =====
+
+  function renderModelLoading() {
+    document.getElementById('app').innerHTML = `
+      <div class="model-loading">
+        <p class="waiting-text">正在准备文字引擎...</p>
+        <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
+        <p class="waiting-sub progress-text"></p>
+      </div>
+    `;
+  }
+
+  function renderHome() {
+    const app = document.getElementById('app');
+    document.getElementById('page-footer').style.display = 'block';
+
+    if (state.isReturningUser) {
+      renderReturningHome(app);
+    } else {
+      renderLanding(app);
+    }
+  }
+
+  function renderLanding(app) {
+    app.innerHTML = `
+      <div class="landing">
+        <h1 class="landing-title">写一段话，找到文字频率最接近的陌生人</h1>
+
+        <div class="landing-editor">
+          <textarea id="user-text" placeholder="今天在想什么？"></textarea>
+        </div>
+
+        <div class="length-hint" id="length-hint"></div>
+
+        <div class="writing-prompts" id="writing-prompts">
+          <button class="writing-prompt" data-text="今天发生了一件让我...">今天发生了一件让我...</button>
+          <button class="writing-prompt" data-text="最近一直在想一个问题...">最近一直在想一个问题...</button>
+          <button class="writing-prompt" data-text="如果有一个人能理解我...">如果有一个人能理解我...</button>
+          <button class="writing-prompt" data-text="随便写点什么，不急">随便写点什么，不急</button>
+        </div>
+
+        <div class="snippet-scroll" id="snippet-scroll"></div>
+
+        <div class="privacy-options">
+          <label>
+            <input type="checkbox" id="show-text-check" checked>
+            匹配成功后向对方展示我的文字片段
+          </label>
+          <label>
+            <input type="checkbox" id="allow-snippet-check" checked>
+            允许匿名展示我的文字片段（用于写作启发）
+          </label>
+        </div>
+
+        <div class="match-mode-selector">
+          <button class="match-mode-btn active" data-mode="deep">深度匹配（AI 辅助，更精准）</button>
+          <button class="match-mode-btn" data-mode="fast">快速匹配（纯本地，更快）</button>
+        </div>
+
+        <button class="btn-deliver" id="btn-deliver">投递</button>
+
+        <p style="margin-top:16px;font-size:13px;color:var(--text-whisper);">
+          <a href="#" id="interview-link" style="color:var(--text-subtle);">不知道写什么？让 AI 帮你整理</a>
+        </p>
+      </div>
+    `;
+
+    // 事件绑定
+    bindLandingEvents();
+    loadWritingSnippets();
+  }
+
+  function renderReturningHome(app) {
+    const active = state.pendingTexts.filter(t => t.status === 'pending').length;
+    const matched = state.pendingTexts.filter(t => t.status === 'matched').length;
+
+    const historyHTML = state.pendingTexts.map(t => `
+      <div class="text-history-item">
+        <div>
+          <span class="text-history-date">${formatDate(t.timestamp)}</span>
+          <span class="text-history-topic">${t.snippet || '...'}</span>
+        </div>
+        <span class="text-history-status status-${t.status}">${statusLabel(t.status)}</span>
+      </div>
+    `).join('');
+
+    app.innerHTML = `
+      <div class="returning-home">
+        <p class="returning-summary">
+          你之前写过 <strong>${state.pendingTexts.length}</strong> 段文字。
+          有 <strong>${matched}</strong> 段找到了人，
+          <strong>${active}</strong> 段还在等待。
+        </p>
+
+        <button class="btn-deliver" id="btn-new-text" style="margin-bottom:32px;">
+          写一段新的
+        </button>
+
+        <div class="text-history">${historyHTML}</div>
+      </div>
+    `;
+
+    document.getElementById('btn-new-text').addEventListener('click', () => {
+      state.isReturningUser = false;
+      renderLanding(app);
+    });
+  }
+
+  // ===== 事件处理 =====
+
+  function bindLandingEvents() {
+    const textarea = document.getElementById('user-text');
+
+    // 起笔提示点击
+    document.querySelectorAll('.writing-prompt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        textarea.value = btn.dataset.text;
+        textarea.focus();
+        updateLengthHint();
+      });
+    });
+
+    // 匹配模式切换
+    document.querySelectorAll('.match-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.match-mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.matchMode = btn.dataset.mode;
+      });
+    });
+
+    // 隐私选项
+    document.getElementById('show-text-check').addEventListener('change', e => {
+      state.showTextToMatch = e.target.checked;
+    });
+
+    // 字数提示
+    textarea.addEventListener('input', updateLengthHint);
+
+    // 投递
+    document.getElementById('btn-deliver').addEventListener('click', handleDeliver);
+
+    // AI 采访模式
+    document.getElementById('interview-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      startInterview();
+    });
+
+    // 恢复草稿
+    if (state.draft) {
+      textarea.value = state.draft.text;
+      updateLengthHint();
+      // 清除草稿
+      LowSignalGuide.clearDraft();
+    }
+  }
+
+  function updateLengthHint() {
+    const textarea = document.getElementById('user-text');
+    const hint = document.getElementById('length-hint');
+    if (!textarea || !hint) return;
+    const len = textarea.value.trim().length;
+    hint.innerHTML = LowSignalGuide.getLengthHintHTML(len);
+  }
+
+  async function handleDeliver() {
+    const textarea = document.getElementById('user-text');
+    const text = textarea.value.trim();
+
+    if (!text) return;
+
+    // 获取或提示输入邮箱
+    const email = await getOrAskEmail();
+    if (!email) return;
+
+    // Step 1: 信号密度评分 + 安全检测
+    const signalResult = await LLMFallback.callWithTimeout('/api/llm/analyze', {
+      prompt_type: 'signal_density',
+      text_a: text
+    });
+
+    // Step 2: 安全检测
+    if (signalResult) {
+      const safetyDecision = SafetyHandler.handleAnalysis(signalResult, text);
+
+      if (!safetyDecision.shouldCreateIssue) {
+        if (safetyDecision.uiState === 'support_resources') {
+          showSupportResources(safetyDecision.resources);
+        } else if (safetyDecision.uiState === 'rejected') {
+          showRejection(safetyDecision);
+        }
+        return;
+      }
+    }
+
+    // Step 3: 试探型用户引导
+    if (signalResult && signalResult.score) {
+      const guideDecision = LowSignalGuide.checkNeedsGuide(text, signalResult);
+      if (guideDecision.needsGuide) {
+        showLowSignalGuide(text);
+        return;
+      }
+    }
+
+    // Step 4: 执行匹配
+    await executeMatch(text, email, signalResult);
+  }
+
+  // ===== 匹配流程 =====
+
+  async function executeMatch(text, email, signalResult) {
+    showWaiting('正在感受你的文字...');
+
+    // 意图解析（深度匹配模式）
+    let intentProfile = null;
+    if (state.matchMode === 'deep') {
+      const intentResult = await LLMFallback.callWithTimeout('/api/llm/analyze', {
+        prompt_type: 'intent_parse',
+        text_a: text
+      });
+      if (intentResult) {
+        intentProfile = intentResult;
+      }
+    }
+
+    showWaiting('正在将你的频率和池子里的文字进行对比...');
+
+    // 匹配
+    const matchResult = await MatchEngine.findMatch(
+      text,
+      await encryptEmail(email),
+      intentProfile,
+      state.matchMode
+    );
+
+    if (matchResult.matched) {
+      // 生成共鸣描述
+      const resonance = await generateResonance(text, matchResult.matchInfo.otherText);
+      showMatchSuccess(matchResult, resonance, text);
+    } else {
+      showNoMatch(matchResult);
+    }
+  }
+
+  async function generateResonance(textA, textB) {
+    const result = await LLMFallback.callWithTimeout('/api/llm/analyze', {
+      prompt_type: 'resonance',
+      text_a: textA,
+      text_b: textB
+    });
+    return result || {
+      resonance: '你们在此刻的频率很接近。',
+      questions: ['你当时在想什么？', '让TA推荐一首歌给你吧。', '告诉TA你那天的感受。']
+    };
+  }
+
+  // ===== UI 状态渲染 =====
+
+  function showWaiting(text) {
+    document.getElementById('app').innerHTML = `
+      <div class="waiting-container">
+        <div class="waiting-wave">
+          <div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+        </div>
+        <p class="waiting-text">${text}</p>
+      </div>
+    `;
+  }
+
+  function showMatchSuccess(matchResult, resonance, userText) {
+    const { matchInfo } = matchResult;
+    state.currentMatch = matchResult;
+
+    const showOtherText = matchInfo.otherText && state.showTextToMatch;
+
+    const icebreakersHTML = (resonance.questions || []).map((q, i) => `
+      <div class="icebreaker-item" onclick="navigator.clipboard.writeText('${q}')">
+        ${i + 1}. ${q}
+      </div>
+    `).join('');
+
+    document.getElementById('app').innerHTML = `
+      <div class="match-result">
+        <div class="resonance-block">${resonance.resonance}</div>
+
+        ${showOtherText ? `
+        <div class="other-text-block">
+          <div class="other-text-label">TA 写下了——</div>
+          <div class="other-text-content">"${matchInfo.otherText}"</div>
+        </div>` : ''}
+
+        <div class="email-block">
+          <div class="email-label">TA 的邮箱</div>
+          <div class="email-address">${matchInfo.otherEmail}</div>
+        </div>
+
+        ${icebreakersHTML ? `
+        <div class="icebreakers">
+          <div class="icebreaker-label">不知道怎么下笔？试试——</div>
+          ${icebreakersHTML}
+        </div>` : ''}
+
+        <div class="actions-row">
+          <a class="btn-email"
+             href="mailto:${matchInfo.otherEmail}?subject=关于那件事——来自 fata 的引介&body=嘿。%0A%0Afata 说我们的文字频率很接近。%0A%0A${encodeURIComponent(resonance.resonance)}%0A%0A">
+            写信给 TA
+          </a>
+          <button class="btn-secondary" onclick="navigator.clipboard.writeText('${matchInfo.otherEmail}')">
+            复制邮箱
+          </button>
+          <button class="btn-secondary" onclick="fata.renderHome()">
+            再写一封
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  function showNoMatch(matchResult) {
+    // 展示回声片段
+    const echoHTML = `"${getEchoSnippet()}"`;
+
+    document.getElementById('app').innerHTML = `
+      <div class="no-match">
+        <p class="no-match-main">你的文字在这里了。</p>
+        <p class="no-match-sub">有人读懂了，就会来信。这可能需要一点时间。</p>
+        <div class="echo-snippet">${echoHTML}</div>
+        <p style="font-size:13px;color:var(--text-whisper);margin-bottom:24px;">
+          一段与你频率相近的话。也许你们会在下一次遇见。
+        </p>
+        <div class="actions-row">
+          <button class="btn-email" onclick="fata.renderHome()">再写一封</button>
+          <button class="btn-secondary" id="btn-share">分享 fata 给朋友</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-whisper);margin-top:16px;">
+          你的文字将在 3 天后自动重新进入匹配池，寻找更接近的人。
+        </p>
+      </div>
+    `;
+
+    if (navigator.share) {
+      document.getElementById('btn-share').addEventListener('click', () => {
+        navigator.share({
+          title: 'fata — 找到文字频率最接近的陌生人',
+          url: 'https://fata.uk'
+        });
+      });
+    }
+  }
+
+  function showSupportResources(resources) {
+    document.getElementById('app').innerHTML =
+      SafetyHandler.getSupportResourcesHTML(resources);
+  }
+
+  function showRejection(decision) {
+    document.getElementById('app').innerHTML =
+      SafetyHandler.getRejectionHTML(decision.cooldownSeconds / 60);
+  }
+
+  function showLowSignalGuide(text) {
+    const guideHTML = LowSignalGuide.getGuideHTML(text);
+    // 在投递按钮上方展示引导
+    const deliverBtn = document.getElementById('btn-deliver');
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = guideHTML;
+    deliverBtn.parentNode.insertBefore(tempDiv.firstChild, deliverBtn);
+    deliverBtn.style.display = 'none';
+  }
+
+  // ===== 采访模式 =====
+
+  function startInterview() {
+    document.getElementById('app').innerHTML = `
+      <div class="interview-container">
+        <div class="interview-messages" id="interview-messages">
+          <div class="interview-msg ai">你今天打开 fata，最想有人跟你聊什么？</div>
+        </div>
+        <div class="interview-input-row">
+          <input class="interview-input" id="interview-input"
+                 placeholder="写点什么..." autofocus>
+          <button class="interview-send" id="interview-send">→</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-whisper);margin-top:12px;text-align:center;">
+          可以说"跳过"或"不知道"——没关系。
+        </p>
+      </div>
+    `;
+
+    let round = 1;
+    const messages = document.getElementById('interview-messages');
+    const input = document.getElementById('interview-input');
+    const sendBtn = document.getElementById('interview-send');
+
+    sendBtn.addEventListener('click', async () => {
+      const text = input.value.trim();
+      if (!text) return;
+
+      messages.innerHTML += `<div class="interview-msg user">${text}</div>`;
+      input.value = '';
+      round++;
+
+      if (round >= 5 || text.includes('差不多了') || text.includes('就这样')) {
+        // 生成匹配画像
+        messages.innerHTML += `
+          <div class="interview-msg ai">
+            我根据你说的帮你整理了一段文字。你可以直接投递，也可以自己改。
+            <br><br>
+            <em>"我最近在..."</em>
+          </div>
+        `;
+        // TODO: 实际调用 LLM 生成画像
+      } else {
+        // 下一轮问题
+        messages.innerHTML += `
+          <div class="interview-msg ai">${getNextInterviewQuestion(text, round)}</div>
+        `;
+      }
+    });
+  }
+
+  // ===== 工具函数 =====
+
+  function isWeChatOrQQ() {
+    const ua = navigator.userAgent;
+    return /MicroMessenger/i.test(ua) || /QQ\//i.test(ua);
+  }
+
+  function showBrowserGuide() {
+    const overlay = document.createElement('div');
+    overlay.className = 'browser-guide-overlay';
+    overlay.innerHTML = `
+      <div class="browser-guide-box">
+        <div class="arrow-icon">↗</div>
+        <p>建议在系统浏览器中打开 fata<br>以获得完整体验</p>
+        <p style="font-size:12px;color:var(--text-subtle);margin-top:12px;">
+          点击右上角 ··· → 在浏览器中打开
+        </p>
+        <button style="margin-top:16px;padding:8px 20px;border:1px solid var(--border);
+                       background:transparent;border-radius:16px;font-size:13px;cursor:pointer;"
+                onclick="this.parentElement.parentElement.remove()">
+          继续在微信中浏览（功能受限）
+        </button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  async function getOrAskEmail() {
+    const stored = localStorage.getItem('fata_email');
+    if (stored) return stored;
+
+    return new Promise(resolve => {
+      // 简化版 — 实际应展示一个温和的弹窗
+      const email = prompt('你的邮箱（用于接收匹配通知）：');
+      if (email) {
+        localStorage.setItem('fata_email', email);
+        state.userEmail = email;
+      }
+      resolve(email || null);
+    });
+  }
+
+  async function encryptEmail(email) {
+    // Web Crypto API AES-GCM 加密
+    return email; // TODO: 实现完整加密
+  }
+
+  async function loadWritingSnippets() {
+    // TODO: 从 IndexedDB 缓存或调用 LLM 生成写作启发片段
+    const snippets = [
+      '今天下班看到一只猫在雨里躲，想给它撑伞但...',
+      '失眠第三天。开始怀疑是不是床的问题而不是我的问题。',
+      '很久没联系的朋友突然发了条消息。我没回。不知道回什么。'
+    ];
+
+    const container = document.getElementById('snippet-scroll');
+    if (container) {
+      container.innerHTML = `
+        <div class="snippet-label">最近有人在写——</div>
+        ${snippets.map(s => `<div class="snippet-item">"${s}"</div>`).join('')}
+      `;
+    }
+  }
+
+  function getEchoSnippet() {
+    // TODO: 从 AI 种子池中选取一条频率最接近的回声片段
+    return '最近在学吉他。手指磨破了但很开心。不知道为什么突然想做一件没有用的事。';
+  }
+
+  function getNextInterviewQuestion(userText, round) {
+    const questions = [
+      '这种感觉是从什么时候开始的？',
+      '有没有哪一刻让你觉得特别明显？',
+      '如果有一个平行世界的你做了不同的选择，你觉得那个你会对现在的你说什么？',
+      '最后一个问题——如果有一个人，听完你说的这些话，什么都不说，只是点点头——你觉得怎么样？'
+    ];
+    return questions[Math.min(round - 2, questions.length - 1)];
+  }
+
+  function formatDate(ts) {
+    const d = new Date(ts);
+    return `${d.getMonth() + 1}月${d.getDate()}日`;
+  }
+
+  function statusLabel(status) {
+    return { pending: '等待中', matched: '已匹配', expired: '已过期' }[status] || status;
+  }
+
+  async function loadFromIndexedDB(storeName) {
+    // TODO: 实现 IndexedDB 读取
+    return null;
+  }
+
+  // ===== 暴露 API =====
+  window.fata = {
+    renderHome,
+    showWritePage: () => /* 重新渲染写作页 */ renderHome(),
+    showHistory: () => state.isReturningUser = true && renderHome(),
+    expandEditor: () => { /* 回到编辑区 */ renderHome(); },
+    forceSubmit: () => { /* 二次确认 + 投递 */ },
+    saveAsDraft: (text) => { LowSignalGuide.saveDraft(text); },
+    switchMatchMode: (mode) => { state.matchMode = mode; renderHome(); },
+    submit: handleDeliver
+  };
+
+  // ===== 启动 =====
+  init().catch(err => {
+    console.error('fata init error:', err);
+    document.getElementById('app').innerHTML = `
+      <div style="text-align:center;padding-top:80px;">
+        <p>fata 正在准备中……如果长时间没有响应，请刷新页面。</p>
+      </div>
+    `;
+  });
+</script>
+
+</body>
+</html>

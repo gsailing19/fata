@@ -1,0 +1,132 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "description": "fata 匹配引擎算法配置 — 示例文件。复制为 algorithm-config.json 并填入你自己的参数值",
+    "total_params": 16
+  },
+
+  "scoring_weights": {
+    "_note": "四权重之和必须等于 1.0",
+    "emb_weight": {
+      "value": 0.35,
+      "min": 0.20, "max": 0.50,
+      "description": "情绪频率（embedding 余弦相似度）权重"
+    },
+    "intent_weight": {
+      "value": 0.35,
+      "min": 0.20, "max": 0.50,
+      "description": "意图兼容度权重"
+    },
+    "style_weight": {
+      "value": 0.15,
+      "min": 0.05, "max": 0.25,
+      "description": "互动风格适配度权重"
+    },
+    "signal_coef": {
+      "value": 0.15,
+      "min": 0.05, "max": 0.20,
+      "description": "双方信号密度乘积权重"
+    }
+  },
+
+  "thresholds": {
+    "cosine_threshold": {
+      "value": 0.80,
+      "min": 0.75, "max": 0.92,
+      "description": "余弦相似度最低匹配阈值"
+    },
+    "signal_low": {
+      "value": 0.30,
+      "min": 0.20, "max": 0.40,
+      "description": "信号密度低于此值触发温和引导"
+    },
+    "signal_high": {
+      "value": 0.60,
+      "min": 0.50, "max": 0.75,
+      "description": "信号密度高于此值进入全池匹配"
+    }
+  },
+
+  "cooling": {
+    "cool_alpha": {
+      "value": 0.30,
+      "min": 0.10, "max": 0.50,
+      "description": "冷却因子系数，公式 1/(1+alpha×match_count)"
+    },
+    "cool_alpha_low_pool": {
+      "value": 0.10,
+      "min": 0.05, "max": 0.20,
+      "description": "小池子冷却因子"
+    },
+    "cool_alpha_high_pool": {
+      "value": 0.35,
+      "min": 0.30, "max": 0.60,
+      "description": "大池子冷却因子"
+    }
+  },
+
+  "decay": {
+    "decay_lambda": {
+      "value": 0.05,
+      "min": 0.03, "max": 0.10,
+      "description": "时效性衰减系数"
+    }
+  },
+
+  "limits": {
+    "max_match_count": {
+      "value": 5,
+      "min": 3, "max": 10,
+      "description": "单段文字最大匹配次数"
+    },
+    "max_pending_per_user": {
+      "value": 10,
+      "min": 5, "max": 20,
+      "description": "每用户最大 pending 文字数"
+    }
+  },
+
+  "diversity": {
+    "mmr_lambda": {
+      "value": 0.50,
+      "min": 0.40, "max": 0.80,
+      "description": "MMR 重排 λ。0.5 为相关性与多样性平衡，偏相关性则增大"
+    }
+  },
+
+  "auto_tuning": {
+    "_note": "自动微调参数",
+    "threshold_float_down": { "value": 0.77, "description": "匹配成功率过低时降至此值" },
+    "threshold_float_up": { "value": 0.85, "description": "重复投递率过高时升至此值" },
+    "auto_tuning_triggers": {
+      "match_success_rate_low": 0.20,
+      "repeat_delivery_rate_high": 0.40,
+      "evaluation_window_days": 7,
+      "min_sample_size": 10
+    }
+  },
+
+  "intent_compat": {
+    "need_complementary_bonus": 0.30,
+    "need_same_bonus": 0.15,
+    "topic_overlap_bonus": 0.10,
+    "expect_similar_bonus": 0.15,
+    "expect_mismatch_penalty": -0.05
+  },
+
+  "style_compat": {
+    "active_passive": 1.0,
+    "active_active": 0.7,
+    "passive_passive": 0.4,
+    "default": 0.6
+  },
+
+  "llm": {
+    "signal_density_model": "deepseek-chat",
+    "intent_parse_model": "deepseek-chat",
+    "resonance_model": "claude-sonnet-4-20250514",
+    "timeout_ms": 15000
+  },
+
+  "_note": "以上值为通用默认值，不是 fata 生产环境的实际参数。请根据你自己的场景和回测结果调整。"
+}

@@ -1,0 +1,44 @@
+# ===== fata .gitignore =====
+# 原则：不进 git 是默认。
+# 只有必须公开才能证明"架构即隐私"的文件才放进去。
+
+# --- 密钥和凭证 ---
+.env
+.dev.vars
+.wrangler/
+
+# --- 算法护城河 ---
+modules/match-engine.js
+config/worker.js
+config/algorithm-config.json
+config/changelog.md
+config/wrangler.toml
+
+# --- 研发文档（除了 README 和 github-setup，全部排除） ---
+00-*.md
+0[2-9]-*.md
+1[0-9]-*.md
+naming-*.md
+state-stranger-matcher.md
+CLAUDE.md
+
+# --- Claude Code ---
+.claude/
+
+# --- 操作系统 ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# --- macOS ---
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# --- 临时文件 ---
+*.local.*
