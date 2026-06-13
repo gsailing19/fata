@@ -76,7 +76,6 @@ cp config/algorithm-config.example.json config/algorithm-config.json
 # 注入密钥
 wrangler secret put GITHUB_PAT
 wrangler secret put DEEPSEEK_API_KEY
-wrangler secret put ANTHROPIC_API_KEY
 wrangler secret put RESEND_API_KEY
 wrangler secret put HMAC_SECRET
 

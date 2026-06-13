@@ -18,14 +18,9 @@ GITHUB_REPO_OWNER = "YOUR_GITHUB_USERNAME"
 GITHUB_REPO_NAME = "fata"
 RESEND_API_BASE = "https://api.resend.com"
 DEEPSEEK_API_BASE = "https://api.deepseek.com/v1"
-ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
 
 # --- 以下通过 wrangler secret put 设置，不写在这个文件中 ---
 # GITHUB_PAT
 # DEEPSEEK_API_KEY
-# ANTHROPIC_API_KEY
 # RESEND_API_KEY
 # HMAC_SECRET
-# SIGNAL_DENSITY_PROMPT（可选——如 prompt 通过 secret 注入）
-# INTENT_PARSE_PROMPT（可选）
-# RESONANCE_PROMPT（可选）

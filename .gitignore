@@ -21,6 +21,15 @@ config/wrangler.toml
 naming-*.md
 state-stranger-matcher.md
 CLAUDE.md
+AGENTS.md
+todo.md
+config/github-setup.md
+
+# --- 内部开发（设计草稿、配置模板） ---
+logo/
+assets/
+config/wrangler.toml.example
+config/algorithm-config.example.json
 
 # --- Claude Code ---
 .claude/
