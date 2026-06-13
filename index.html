@@ -309,6 +309,39 @@ body {
   .email-address { font-size: 15px; }
   .actions-row { flex-direction: column; }
 }
+
+/* --- 邮箱输入弹窗 --- */
+.email-modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.35); display: flex;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.email-modal {
+  background: #fff; border-radius: 16px; padding: 32px 28px;
+  max-width: 380px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  text-align: center;
+}
+.email-modal h3 {
+  font-family: var(--font-serif); font-size: 20px;
+  color: var(--text-body); margin: 0 0 12px 0; font-weight: 400;
+}
+.email-privacy-note {
+  font-size: 13px; color: var(--text-whisper); line-height: 1.7; margin: 0 0 20px 0;
+}
+.email-privacy-note a { color: var(--accent); text-decoration: none; }
+.email-input {
+  width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px;
+  font-size: 15px; text-align: center; outline: none; box-sizing: border-box;
+  font-family: var(--font-serif); transition: border-color 0.2s;
+}
+.email-input:focus { border-color: var(--accent); }
+.email-buttons { margin-top: 16px; display: flex; gap: 12px; justify-content: center; }
+.btn-secondary { background: var(--bg-page); color: var(--text-whisper); border: 1px solid var(--border); padding: 10px 20px; border-radius: 10px; cursor: pointer; font-size: 14px; }
+.btn-primary { background: var(--accent); color: #fff; border: none; padding: 10px 24px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; }
+.email-tip { font-size: 12px; color: var(--text-whisper); margin-top: 12px; }
+.shake { animation: shake 0.3s ease-in-out; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 50%{transform:translateX(6px)} 75%{transform:translateX(-4px)} }
 </style>
 </head>
 <body>
@@ -867,13 +900,56 @@ body {
     if (stored) return stored;
 
     return new Promise(resolve => {
-      // 简化版 — 实际应展示一个温和的弹窗
-      const email = prompt('你的邮箱（用于接收匹配通知）：');
-      if (email) {
-        localStorage.setItem('fata_email', email);
-        state.userEmail = email;
-      }
-      resolve(email || null);
+      // 温和的邮箱输入弹窗，配合隐私说明
+      const overlay = document.createElement('div');
+      overlay.className = 'email-modal-overlay';
+      overlay.innerHTML = `
+        <div class="email-modal">
+          <h3>你的邮箱</h3>
+          <p class="email-privacy-note">
+            fata 不会看到你的邮箱——它在你浏览器里加密后存入匹配池。<br>
+            只有匹配成功时，双方各自收到对方邮箱。<br>
+            <a href="https://github.com/gsailing19/fata" target="_blank">审查源码验证这条承诺。</a>
+          </p>
+          <input type="email" id="email-input" class="email-input"
+                 placeholder="example@qq.com" autofocus>
+          <div class="email-buttons">
+            <button class="btn-secondary" id="email-cancel">以后再说</button>
+            <button class="btn-primary" id="email-confirm">确认</button>
+          </div>
+          <p class="email-tip">推荐用 QQ 邮箱或 Outlook，无需任何配置</p>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      const input = document.getElementById('email-input');
+      const confirm = document.getElementById('email-confirm');
+      const cancel = document.getElementById('email-cancel');
+
+      const done = (value) => {
+        overlay.remove();
+        resolve(value);
+      };
+
+      confirm.addEventListener('click', () => {
+        const val = input.value.trim();
+        if (val && val.includes('@')) {
+          localStorage.setItem('fata_email', val);
+          state.userEmail = val;
+          done(val);
+        } else {
+          input.classList.add('shake');
+          setTimeout(() => input.classList.remove('shake'), 400);
+        }
+      });
+
+      cancel.addEventListener('click', () => {
+        done(null);
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') confirm.click();
+      });
     });
   }
 
