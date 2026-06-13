@@ -359,6 +359,9 @@ body {
     draft: null               // 草稿
   };
 
+  // HMAC 密钥（浏览器端生成，与服务端 HMAC_KEY 相同）
+  let HMAC_KEY_RAW = '';
+
   // ===== 初始化 =====
   async function init() {
     // 检测浏览器环境
@@ -379,6 +382,17 @@ body {
     // 加载模型
     renderModelLoading();
     const result = await ModelLoader.initialize(onModelProgress);
+
+    // 从 Worker 获取 HMAC 密钥（存入 sessionStorage，仅本次会话有效）
+    try {
+      const keyResp = await fetch('https://worker.fata.uk/api/health');
+      if (keyResp.ok) {
+        HMAC_KEY_RAW = sessionStorage.getItem('fata_hmac_key') ||
+          await _fetchHMACKey();
+      }
+    } catch (e) {
+      console.warn('fata: HMAC key fetch failed, API calls will be unsigned');
+    }
 
     if (result.mode === 'full') {
       state.modelStatus = 'ready';
@@ -864,8 +878,72 @@ body {
   }
 
   async function encryptEmail(email) {
-    // Web Crypto API AES-GCM 加密
-    return email; // TODO: 实现完整加密
+    // 使用 AES-256-GCM 加密，密钥从用户邮箱派生的 PBKDF2 产生
+    // 加密后的格式：base64(iv + ciphertext)
+    try {
+      const key = await _deriveKey(email);
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const encoder = new TextEncoder();
+      const ciphertext = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        encoder.encode(email)
+      );
+      // 拼接 IV + ciphertext
+      const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+      combined.set(iv);
+      combined.set(new Uint8Array(ciphertext), iv.length);
+      return btoa(String.fromCharCode(...combined));
+    } catch (e) {
+      console.error('fata: encryptEmail failed, falling back to plaintext', e);
+      return email;
+    }
+  }
+
+  async function _deriveKey(salt) {
+    // 从服务器获取的 HMAC_KEY 作为密钥素材
+    // PBKDF2 派生 AES-256 密钥
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(HMAC_KEY_RAW || 'fata-default-encryption-key'),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: new TextEncoder().encode(salt),
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  async function _fetchHMACKey() {
+    // 从 Worker 获取 HMAC 密钥（仅一次，存入 sessionStorage）
+    try {
+      const path = '/api/hmac-key';
+      const ts = Math.floor(Date.now() / 1000).toString();
+      // 初次请求没有 HMAC 签名（鸡生蛋问题），Worker 的 /api/hmac-key 豁免 HMAC
+      const resp = await fetch(`https://worker.fata.uk${path}`, {
+        headers: { 'X-Fata-Timestamp': ts }
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.hmac_key) {
+          sessionStorage.setItem('fata_hmac_key', data.hmac_key);
+          return data.hmac_key;
+        }
+      }
+    } catch (e) {
+      console.warn('fata: could not fetch HMAC key', e);
+    }
+    return '';
   }
 
   async function loadWritingSnippets() {

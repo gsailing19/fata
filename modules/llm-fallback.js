@@ -27,20 +27,51 @@ const LLMFallback = {
   },
 
   /**
+   * 生成 HMAC 签名头（防止外部直接调用 Worker）
+   * @param {string} url — 请求 URL
+   * @param {string} hmacKey — HMAC 共享密钥
+   * @returns {Object} — 包含 X-Fata-Signature 和 X-Fata-Timestamp 的 headers
+   */
+  async _buildHMACHeaders(url, hmacKey) {
+    if (!hmacKey) {
+      console.warn('fata: HMAC key not available, request may be rejected by Worker');
+      return {};
+    }
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const path = new URL(url, window.location.origin).pathname;
+    const message = `${timestamp}:${path}`;
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(hmacKey);
+    const key = await crypto.subtle.importKey('raw', keyData,
+      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
+    const sigStr = btoa(String.fromCharCode(...new Uint8Array(sig)));
+    return {
+      'X-Fata-Signature': sigStr,
+      'X-Fata-Timestamp': timestamp
+    };
+  },
+
+  /**
    * 通过 CF Worker 调用 LLM API（带超时）
    *
    * @param {string} endpoint — '/api/llm/analyze' | '/api/llm/resonance'
    * @param {Object} payload — LLM 调用参数
+   * @param {string} [hmacKey] — 浏览器端 HMAC 密钥(与服务端 HMAC_KEY 相同)
    * @returns {Promise<Object|null>} — LLM 结果 | null（超时/失败）
    */
-  async callWithTimeout(endpoint, payload) {
+  async callWithTimeout(endpoint, payload, hmacKey) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs);
 
     try {
+      const hmacHeaders = await this._buildHMACHeaders(endpoint, hmacKey);
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...hmacHeaders
+        },
         body: JSON.stringify(payload),
         signal: controller.signal
       });
