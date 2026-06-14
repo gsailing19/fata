@@ -34,7 +34,8 @@ const ResendRetry = {
           await this._sleep(this.config.retryIntervalsMs[attempt - 1]);
         }
 
-        const response = await fetch('/api/resend/send', {
+        const API_BASE = 'https://worker.fata.uk';
+        const response = await fetch(API_BASE + '/api/resend/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -161,7 +162,8 @@ const ResendRetry = {
    */
   async _updateMatchLabel(issueNumber, newLabel) {
     try {
-      await fetch(`/api/github/issues/${issueNumber}/label`, {
+      const API_BASE = 'https://worker.fata.uk';
+      await fetch(API_BASE + `/api/github/issues/${issueNumber}/label`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label: newLabel })

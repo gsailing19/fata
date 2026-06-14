@@ -443,6 +443,9 @@ body {
   let HMAC_KEY_RAW = '';
   window.HMAC_KEY_RAW = undefined; // 暴露给 MatchEngine 模块访问，首次 HMAC 获取后更新
 
+  // API 基地址
+  const API_BASE = 'https://worker.fata.uk';
+
   // 监听网络恢复后模型重新加载（来自 ModelLoader）
   window.addEventListener('fata:model-ready', (e) => {
     if (e.detail && e.detail.pipeline) {
@@ -678,7 +681,7 @@ body {
     if (!email) return;
 
     // Step 1: 信号密度评分 + 安全检测
-    const signalResult = await LLMFallback.callWithTimeout('/api/llm/analyze', {
+    const signalResult = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
       prompt_type: 'signal_density',
       text_a: text
     }, HMAC_KEY_RAW);
@@ -729,7 +732,7 @@ body {
     // 意图解析（深度匹配模式）
     let intentProfile = null;
     if (state.matchMode === 'deep') {
-      const intentResult = await LLMFallback.callWithTimeout('/api/llm/analyze', {
+      const intentResult = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
         prompt_type: 'intent_parse',
         text_a: text
       }, HMAC_KEY_RAW);
@@ -814,7 +817,7 @@ body {
   }
 
   async function generateResonance(textA, textB) {
-    const result = await LLMFallback.callWithTimeout('/api/llm/analyze', {
+    const result = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
       prompt_type: 'resonance',
       text_a: textA,
       text_b: textB
@@ -998,7 +1001,7 @@ body {
         // 调用 LLM 生成匹配画像
         try {
           const allAnswers = answers.join('；');
-          const result = await LLMFallback.callWithTimeout('/api/llm/analyze', {
+          const result = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
             prompt_type: 'interview_compose',
             text_a: allAnswers
           }, HMAC_KEY_RAW);
@@ -1207,7 +1210,7 @@ body {
         return;
       }
 
-      const resp = await fetch('/api/github/issues?labels=seed&per_page=5&state=open');
+      const resp = await fetch(API_BASE + '/api/github/issues?labels=seed&per_page=5&state=open');
       if (resp.ok) {
         const issues = await resp.json();
         const snippets = issues

@@ -66,7 +66,8 @@ const LLMFallback = {
 
     try {
       const hmacHeaders = await this._buildHMACHeaders(endpoint, hmacKey);
-      const response = await fetch(endpoint, {
+      const fullUrl = endpoint.startsWith('http') ? endpoint : `https://worker.fata.uk${endpoint}`;
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
