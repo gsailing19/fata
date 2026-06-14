@@ -169,14 +169,39 @@ const LLMFallback = {
   // --- 内部方法 ---
 
   async _generateEmbeddingLocal(text) {
-    // 使用 Transformers.js 在浏览器端生成 embedding
-    // 此方法在 match-engine.js 中实现，这里只做接口定义
-    throw new Error('_generateEmbeddingLocal 需要在 match-engine.js 中实现');
+    if (window.MatchEngine && window.MatchEngine._generateEmbedding) {
+      return window.MatchEngine._generateEmbedding(text);
+    }
+    // MatchEngine 未初始化时用简单字符 bigram 向量
+    const chars = (text || '').replace(/\s+/g, '').split('');
+    const vec = new Array(512).fill(0);
+    for (let i = 0; i < chars.length - 1; i++) {
+      const h = ((chars[i] + chars[i + 1]).split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 0)) % 512;
+      vec[Math.abs(h)] += 1 / (chars.length || 1);
+    }
+    const norm = Math.sqrt(vec.reduce((a, b) => a + b * b, 0));
+    if (norm > 0) vec.forEach((_, i) => vec[i] /= norm);
+    return vec;
   },
 
   async _matchByEmbeddingOnly(embedding, userEmail) {
-    // 纯 embedding 匹配（跳过意图解析）
-    throw new Error('_matchByEmbeddingOnly 需要在 match-engine.js 中实现');
+    if (window.MatchEngine && window.MatchEngine.findMatch) {
+      return window.MatchEngine.findMatch('', userEmail, null, 'fast_fallback');
+    }
+    return { matched: false, poolSize: 0 };
+  },
+
+  _buildMatchResult(userText, userEmail, llmResult, mode) {
+    return {
+      matched: true,
+      matchInfo: {
+        otherEmail: llmResult?.email || '',
+        similarityScore: llmResult?.score || 0,
+        otherText: llmResult?.text || '',
+        candidatesCount: 1
+      },
+      mode: mode || 'fallback'
+    };
   },
 
   _recordFallback(reason) {
@@ -218,11 +243,6 @@ const LLMFallback = {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
-  },
-
-  _buildMatchResult(userText, userEmail, llmResult, mode) {
-    // 由 match-engine.js 提供完整实现
-    throw new Error('_buildMatchResult 需要在 match-engine.js 中实现');
   }
 };
 

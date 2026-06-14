@@ -1,0 +1,33 @@
+---
+name: 反馈与帮助
+description: 向 fata 反馈问题、建议或寻求帮助
+labels: ['feedback']
+body:
+  - type: markdown
+    attributes:
+      value: "感谢你花时间让 fata 变得更好。"
+  - type: dropdown
+    id: type
+    attributes:
+      label: 这是哪种反馈？
+      options:
+        - 遇到了 bug
+        - 想提个建议
+        - 需要帮助
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 描述
+      description: 发生了什么？你期望什么？
+      placeholder: 尽量具体地描述。
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: 浏览器和系统
+      description: 比如 "Safari on iOS 17" 或 "Chrome on macOS"
+      placeholder: Chrome on macOS

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>fata 种子文字注入工具</title>
+<style>
+  body { background:#faf9f6; font-family:system-ui,sans-serif; padding:24px; max-width:800px; margin:0 auto; }
+  h2 { color:#2a2a2a; font-weight:400; }
+  .log { background:#fff; border:1px solid #e8e4dc; border-radius:8px; padding:16px; max-height:400px; overflow-y:auto; font-size:13px; font-family:monospace; margin:16px 0; }
+  .log .ok { color:#2d8a2d; }
+  .log .err { color:#c0392b; }
+  .log .info { color:#666; }
+  button { background:#2a2a2a; color:#fff; border:none; padding:12px 28px; border-radius:8px; font-size:15px; cursor:pointer; }
+  button:disabled { opacity:0.4; cursor:not-allowed; }
+  #status { margin:12px 0; color:#666; }
+</style>
+</head>
+<body>
+<h2>fata 种子文字注入工具</h2>
+<p>生成 50 条 AI 种子文字 → 浏览器端生成 embedding → AES-GCM 加密 → 通过 Worker 写入 GitHub Issues（label: seed + pending）</p>
+<p style="font-size:13px;color:#999;">每个种子 body：<code>{"e":"&lt;encrypted_embedding&gt;","m":"&lt;encrypted_email&gt;","h":"&lt;sha256_of_email&gt;","text_snippet":"&lt;前80字&gt;"}</code></p>
+<div id="status">准备就绪 — 点击按钮开始</div>
+<button id="startBtn" onclick="start()">开始注入 50 条种子文字</button>
+<div class="log" id="log"></div>
+
+<script type="module">
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js';
+
+const SEEDS = [
+  // 孤独感 (5条)
+  "有时候一个人在家，电视开着但没在看，手机刷着但不知道看什么。不是无聊，就是觉得什么都不够。突然想找人说点什么，但翻了一遍通讯录，又把手机放下了。",
+  "周末两天除了拿外卖没出过门。不是不想出门，是真的不知道出去干嘛。一个人逛街太奇怪，约朋友又觉得累。最后就是窝在沙发上看天花板。有时候会想，这样的日子还要过多久。",
+  "失眠不是最难受的。最难受的是凌晨三点醒了之后，听着窗外的风，觉得这个世界上没有人知道你现在是醒着的。这种透明感很奇妙——既孤独，又有一种奇怪的安全感。",
+  "生了病自己打车去医院，打完点滴自己打车回来。整个过程没有告诉任何人。不是逞强，是觉得说了也没用。别人能做什么呢？最多发个'抱抱'的表情。",
+  "今天在公司加班到十点，走出来的时候下起小雨。站在大楼门口等雨停，看着路灯下细细密密的雨丝，突然觉得——我怎么走到这一步的。不是说不开心，就是有点恍惚。",
+
+  // 梦想 (5条)
+  "一直想开一家小书店。不是那种卖畅销书的，是那种只有一个小房间，书架上都是我读过的书，每本里面夹着便签，写着我当时读那本书时的感受。来的人不是来买书的，是来找共鸣的。但我不知道从哪里开始。",
+  "三十岁之前想做完三件事：出一本书、学会弹吉他、去西藏徒步。现在三件事都停在'开始'那个阶段。不是没有时间，是每次想做了，就有一个声音说'别折腾了'。",
+  "今天路过以前的小学，校门口修过了，但那条胡同还在。站了一会儿想起小时候站在这里等妈妈来接，那时候最大的梦想是当一个宇航员。现在连月球基地都有了，但我连天文台都没去过。",
+  "我的梦想特别小——就是有一天不用看手机，不看时间，不想接下来要干嘛，就那么待一天。听起来很简单对吧？但是上一次能做到，已经想不起来了。",
+  "想学画画想了三年了。每次都跟自己说下周开始。三年过去了，画板还在角落里没拆封。今天又看到别人分享的画，又想了一遍。希望下次看到不是'又想了一遍'，而是'今天我也画了'。",
+
+  // 日常小事 (5条)
+  "今天等公交的时候看见一只猫蹲在站台上，很认真地看雨。人都在躲雨，它坐在水洼边上尾巴慢慢地晃。不知道它是不是也在等车。车来了，猫没上车，我也没回头看它。",
+  "去买菜的时候突然想吃西瓜，买了一半，老板娘说你是今天第一个买西瓜的人。回来切开发现没熟。没舍得扔，放了点盐吃了。不知道为什么要放盐，我妈以前就是这样的。",
+  "在地铁上看见一个人拿着和我一模一样的手机壳，愣了一下。然后就想——会不会连我们手机里的内容也差不多。但在同一个站下车的，他往东走，我往西走。",
+  "今天做了饭，两个菜一个汤。其实一个人吃真的好浪费。做了半小时吃了十分钟，洗碗还要十五分钟。但是做饭的时候我觉得自己是活着的。",
+  "昨晚做了个特别真实的梦。梦到我没有搬家，还在小时候的那个房子里。醒过来发现被子裹得太紧了。然后想了一下，我在这个出租屋里已经住了三年了。",
+
+  // 读书笔记 (5条)
+  "最近在看俄罗斯的小说，其实看不懂。但是喜欢那种感觉——几百页都在讲一个人心里在想什么，没有任何'反转'、'爽点'、'爆款'。就是一个人在想。慢得让人心安。",
+  "今天读到一句话：'人生的一半是烦恼，另一半是解决烦恼的烦恼。'想了一下午——好像不是悲观，是真的。",
+  "重读了十年前看过的书。当时划线的句子现在觉得不值一提。倒是那些当时完全略过的段落，现在看懂了。不是变聪明了，是变老了。",
+  "有人送了我一本书，扉页写了'希望你喜欢'。书是好看的但不是我喜欢的类型。但每次看到那句话还是会笑——不是喜欢书，是喜欢写这句话的人。",
+  "看到一段话特别触动：'等到发现自己是普通人的时候，青春就结束了。'我好像二十三岁就发现了。那天坐了二号线，站在拥挤的车厢里看着车窗玻璃反射出来的自己，突然接受了这个事实。",
+
+  // 旅行 (5条)
+  "去过一个没人认识我的小镇。待了三天。每天就在河边坐着，看着那些来钓鱼的人。他们坐一整天也没钓到什么。我问其中一个为什么还来，他说'不是想钓鱼，是想坐在这里的借口'。",
+  "一个人旅行最大的挑战是吃饭。点菜的时候永远不知道要什么。要一个菜太少，两个菜太多。最后总是点一碗面。然后是另一碗面。然后回家瘦了三斤。",
+  "在海边坐了一个下午，看潮水上来下去。后来发现旁边有个大叔也在看，我们两个就这么坐着。太阳下山的时候他站起来说'明天见'就走了。第二天我没去。现在想起来有点后悔。",
+  "迷路的时候发现了一条街，都是老房子，二楼种了花。有一个窗台上有三只猫在晒太阳。那三只猫比任何景点都让我觉得'不虚此行'。",
+  "上次旅行带了相机、三脚架、各种滤镜，准备拍大片。结果一张没拍。不是不想拍，是觉得收不进去。那种天色转暗时山变成剪影的过程，拍下了就不是那个感觉了。",
+
+  // 音乐 (5条)
+  "有一首歌听了十年。每一次听都不一样。十年前听是因为旋律，五年前听是因为歌词，现在听是为了找回十年前和五年前的自己。歌没变，我变了。",
+  "今天发现了一个特别冷门的乐队。只有几百个粉丝。听完他们的歌之后有一种奇怪的独占欲——不想推荐给任何人，怕他们红了就变了。但同时又希望他们能靠音乐活下去。矛盾。",
+  "睡着了忘记关音乐，醒来的时候歌还在放。是那种特别安静的钢琴曲。有那么十几秒，我不知道自己在哪里，也不知道现在是几点。那种感觉特别好，也特别短暂。",
+  "在出租车上听到司机放的歌是我高中时候的。以为自己已经不喜欢了，但跟着哼了四句之后眼泪突然下来了。不是因为歌词，是因为那个年纪的自己又回来了一下。",
+  "想学钢琴。不是想弹给别人听，就是想一个人晚上坐在琴前面，弹很简单的曲子。手指很笨拙但声音是对的。就像用另一种方式说话。",
+
+  // 自我成长 (5条)
+  "今天第一次拒绝了一个不合理的请求。说完'不行'之后心跳得很快，手心冒汗。但回家的路上觉得自己好像长高了一点。不是说那个人不好，是我终于知道什么叫边界了。",
+  "开始学会在'解释自己'和'随便你吧'之间选择后者。以前别人误会，我要写五百字说清楚前因后果。现在觉得，你愿意理解你就理解，不理解——那我也不解释了。这算成长吗。",
+  "以前觉得'爱自己'就是买好吃的、泡个澡、给自己放一天假。现在觉得好像不是。爱自己是不跟自己较劲，是在想'我是不是不配'的时候，替自己说一句'你配的'。",
+  "学会了一项新技能——叹气之后继续。不是敷衍，是真的接受'这事就这样了'然后开始想下一步。以前会卡在'为什么这样'里面出不来，现在会跟自己说'好了，那接下来呢'。",
+  "今天去跑了步。没什么，就是跑了步。但对于一个连续三个月都说'明天开始运动'的人来说，今天这个'今天'，挺值得记下来的。",
+
+  // 友谊 (5条)
+  "老朋友越来越少联系了。不是谁的问题，就是没有共同话题了。她在带娃，我在加班。她的朋友圈全是孩子。我的朋友圈已经半年没更新。上次发的消息还停在'改天约'。那天是哪天。",
+  "今天翻到大学时候的合影，四个人在操场上做鬼脸。现在一个人在深圳、一个在武汉、一个移民了、一个就在这里但我们已经三年没见了。不是不想见，是每个人都有了新生活，约一次像策划一场战役。",
+  "有一个发小，每年只在生日那天发消息。平时不说话。但每次收到那条消息，我就知道这个名字我不用点开看——肯定是'生日快乐老铁'。只有三个字，但比朋友圈一百条评论都管用。",
+  "朋友问我借钱，其实不多。但我犹豫了——不是舍不得，是怕借了之后关系就变了。后来借了。他没有说什么时候还，我也没问。可能下一次见面的时候会有点尴尬，但不出手的那一刻更难受。",
+  "最安心的友谊是什么样的？就是你可以两个月不说话，然后突然发一句'救命我今天好崩溃'，对方回'发生什么了'。不提'你怎么这么久没联系'。不记。",
+
+  // 爱情困惑 (5条)
+  "喜欢一个人但不敢说。我们已经是很好的朋友了。如果说了，万一不行，就连朋友都做不了。如果不试，又可能错过。就在这两个答案之间反复横跳。觉得自己像个傻子。",
+  "分手快一年了。说不上还喜欢，也说不上完全放下。就是偶尔看到什么东西会想分享给TA，然后想起——哦，不能分享了。那个习惯还没有戒掉。",
+  "身边的人都在谈恋爱，换了一轮又一轮。我觉得我不是不想谈，是想等一个不用'谈'就能在一起的人。不用试图展示自己是什么样的人，就是刚好知道了，也刚好愿意。",
+  "第一次相亲。对方挺好的。但整个过程中我都在想——你是谁？我又是什么？两个人坐在两张椅子上交换简历式的信息，像是面试，不像认识。最后说再联系，我们都知道那个再联系不会来。",
+  "有一个人对我很好，好到我觉得自己不配。所以开始回避。不是不喜欢，是怕有一天这个人发现'原来你也不过如此'。与其那样，不如不要开始。这是我的问题，不是TA的问题。"
+];
+
+let hmacKey = '';
+let embedPipeline = null;
+
+function log(msg, cls) {
+  const el = document.getElementById('log');
+  el.innerHTML += `<span class="${cls || 'info'}">${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+
+window.start = async function() {
+  const btn = document.getElementById('startBtn');
+  btn.disabled = true;
+  setStatus('正在加载 embedding 模型...');
+
+  try {
+    // Step 1: 加载模型
+    log('加载 bge-small-zh-v1.5...');
+    embedPipeline = await pipeline('feature-extraction', 'Xenova/bge-small-zh-v1.5');
+    log('✓ 模型加载完成', 'ok');
+
+    // Step 2: 获取 HMAC Key
+    setStatus('获取 HMAC 密钥...');
+    log('获取 HMAC 密钥...');
+    const healthResp = await fetch('https://worker.fata.uk/api/health');
+    if (!healthResp.ok) {
+      log('✗ Worker 不可达', 'err');
+      setStatus('失败：Worker 不可达');
+      btn.disabled = false;
+      return;
+    }
+    const keyResp = await fetch('https://worker.fata.uk/api/hmac-key', {
+      headers: { 'X-Fata-Timestamp': String(Math.floor(Date.now() / 1000)) }
+    });
+    const keyData = await keyResp.json();
+    hmacKey = keyData.hmac_key || '';
+    if (!hmacKey) {
+      log('✗ HMAC Key 为空', 'err');
+      setStatus('失败：HMAC Key 为空');
+      btn.disabled = false;
+      return;
+    }
+    log('✓ HMAC Key 获取成功', 'ok');
+
+    // Step 3: 逐条生成 embedding + 加密 + 写入
+    let successCount = 0;
+    for (let i = 0; i < SEEDS.length; i++) {
+      const text = SEEDS[i];
+      setStatus(`处理种子 ${i + 1}/${SEEDS.length}...`);
+
+      // 生成 embedding (512-d)
+      const embResult = await embedPipeline(text, { pooling: 'mean', normalize: true });
+      const embedding = Array.from(embResult.data);
+
+      // 生成 dummy 邮箱
+      const dummyEmail = `seed-${i + 1}@fata.internal`;
+
+      // 加密邮箱
+      const emailEncrypted = await encryptAES(dummyEmail, hmacKey);
+      const emailHash = await sha256(dummyEmail);
+
+      // 加密 embedding
+      const embEncrypted = await encryptAES(JSON.stringify(embedding), hmacKey);
+
+      // 取 text_snippet (前 80 字)
+      const snippet = text.length > 80 ? text.slice(0, 80) : text;
+
+      // 构建 Issue body
+      const body = JSON.stringify({
+        e: embEncrypted,
+        m: emailEncrypted,
+        h: emailHash,
+        text_snippet: snippet
+      });
+
+      // 构建 HMAC 签名
+      const path = '/api/github/issues';
+      const ts = String(Math.floor(Date.now() / 1000));
+      const msg = `${ts}:${path}`;
+      const sig = await hmacSign(msg, hmacKey);
+
+      // 通过 Worker 写入 GitHub Issues
+      const createResp = await fetch('https://worker.fata.uk/api/github/issues', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Fata-Signature': sig,
+          'X-Fata-Timestamp': ts
+        },
+        body: JSON.stringify({
+          title: `[Seed ${i + 1}] ${snippet.slice(0, 30)}`,
+          body,
+          labels: ['seed', 'pending']
+        })
+      });
+
+      if (createResp.ok) {
+        log(`✓ 种子 ${i + 1}/${SEEDS.length} 写入成功: "${snippet.slice(0, 30)}..."`, 'ok');
+        successCount++;
+      } else {
+        const errText = await createResp.text();
+        log(`✗ 种子 ${i + 1} 失败: ${createResp.status} ${errText}`, 'err');
+      }
+
+      // 速率控制：延迟 1s 避免触发 GitHub 次限流
+      await sleep(1000);
+    }
+
+    log('---', 'info');
+    log(`完成！成功 ${successCount}/${SEEDS.length}`, successCount === SEEDS.length ? 'ok' : 'err');
+    setStatus(`完成：${successCount}/${SEEDS.length} 条种子已写入`);
+  } catch (e) {
+    log(`✗ 致命错误: ${e.message}`, 'err');
+    setStatus('失败: ' + e.message);
+  }
+  btn.disabled = false;
+};
+
+// ---- 加密工具 ----
+async function encryptAES(plaintext, keyStr) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const keyMaterial = await crypto.subtle.importKey('raw',
+    new TextEncoder().encode(keyStr).slice(0, 32), { name: 'AES-GCM' }, false, ['encrypt']);
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, keyMaterial,
+    new TextEncoder().encode(plaintext));
+  const combined = new Uint8Array(iv.length + ct.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(ct), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function sha256(str) {
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hmacSign(msg, keyStr) {
+  const key = await crypto.subtle.importKey('raw',
+    new TextEncoder().encode(keyStr), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>

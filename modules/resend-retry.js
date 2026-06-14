@@ -148,7 +148,7 @@ const ResendRetry = {
       通信在你自己的邮箱中进行。fata 只是一个引介工具——把人介绍给你后，它主动退出。<br>
       <a href="https://fata.uk" style="color:#bbb;">想再写一封？回到 fata</a>
       &nbsp;·&nbsp;
-      <a href="https://fata.uk/unsubscribe" style="color:#bbb;">暂停通知</a>
+      <a href="https://worker.fata.uk/unsubscribe?h=${encodeURIComponent(matchB.emailHash || '')}" style="color:#bbb;">暂停通知</a>
     </p>
 
   </div>

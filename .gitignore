@@ -49,5 +49,8 @@ Thumbs.db
 Icon
 ._*
 
+# --- Playwright automation ---
+.playwright-mcp/
+
 # --- 临时文件 ---
 *.local.*

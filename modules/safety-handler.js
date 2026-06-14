@@ -91,6 +91,44 @@ const SafetyHandler = {
   },
 
   /**
+   * LLM 不可用时的本地关键词兜底检查。
+   * 不替代 LLM 的语义理解能力，但能拦截最明显的危险信号。
+   * @param {string} text - 用户文字
+   * @returns {{ action: 'allow'|'support'|'reject' }}
+   */
+  localCheck(text) {
+    const t = text || '';
+
+    // 高危自伤关键词（中文常见表达）
+    const selfHarmPatterns = [
+      /想死/, /不想活/, /自杀/, /结束生命/, /活不下去/,
+      /自残/, /割腕/, /跳楼/, /上吊/, /安眠药/,
+      /没有意义.*活着/, /活着.*没有意义/, /不如死/,
+      /不想.*醒过来/, /永远.*睡过去/, /离开这个世界/
+    ];
+
+    // 仇恨/骚扰关键词
+    const hatePatterns = [
+      /杀光/, /灭掉/, /弄死.*人/, /暴力/, /殴打/,
+      /人肉/, /曝光.*隐私/, /报复/
+    ];
+
+    for (const p of selfHarmPatterns) {
+      if (p.test(t)) {
+        return { action: 'support' };
+      }
+    }
+
+    for (const p of hatePatterns) {
+      if (p.test(t)) {
+        return { action: 'reject' };
+      }
+    }
+
+    return { action: 'allow' };
+  },
+
+  /**
    * 获取心理援助资源页面的 HTML
    * 这个页面替换"等待匹配"页面，在 risk_level=high 时展示
    *

@@ -5,12 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>fata — 找到文字频率最接近的陌生人</title>
 
+<!-- favicon -->
+<link rel="icon" type="image/svg+xml" href="/logo/logo.svg">
+<link rel="apple-touch-icon" href="/logo/logo-unified-v2.png">
+
+<!-- OG tags for social sharing -->
+<meta property="og:title" content="fata — 找到文字频率最接近的陌生人">
+<meta property="og:description" content="写一段话，浏览器里的 AI 会找到此刻文字频率最接近的陌生人。通信在你自己的邮箱里进行。">
+<meta property="og:url" content="https://fata.uk">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://fata.uk/logo/logo-unified-v2.png">
+
+<!-- PWA manifest -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#faf9f6">
+
 <!-- CSP -->
 <meta http-equiv="Content-Security-Policy"
   content="default-src 'self';
   script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
   style-src 'self' 'unsafe-inline';
-  connect-src 'self' https://worker.fata.uk https://api.github.com https://gitee.com;
+  connect-src 'self' https://worker.fata.uk https://api.github.com https://gitee.com https://cdn.jsdelivr.net;
   img-src 'self' data:;
   font-src 'self';
   worker-src 'self' blob:;
@@ -77,6 +92,11 @@ body {
 .landing-editor textarea::placeholder {
   color: var(--text-whisper); font-style: italic;
 }
+.landing-editor textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(42,42,42,0.1), var(--shadow-card);
+  outline: none;
+}
 /* 起笔提示 */
 .writing-prompts {
   display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
@@ -129,10 +149,28 @@ body {
   font-family: var(--font-serif); font-size: 16px;
   padding: 12px 40px; border: none; border-radius: var(--radius);
   background: var(--accent); color: #fff; cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 0.15s;
 }
-.btn-deliver:hover { opacity: 0.85; }
-.btn-deliver:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-deliver:hover { opacity: 0.85; transform: scale(1.02); }
+.btn-deliver:active { transform: scale(0.98); }
+.btn-deliver:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* 通用按钮微交互 */
+.btn-primary {
+  font-family: var(--font-serif); font-size: 15px;
+  padding: 12px 32px; border: none; border-radius: var(--radius);
+  background: var(--accent); color: #fff; cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+.btn-primary:hover { opacity: 0.85; transform: scale(1.02); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-ghost {
+  font-size: 14px; padding: 10px 24px; border: 1px solid var(--border);
+  border-radius: var(--radius); background: transparent;
+  color: var(--text); cursor: pointer; font-family: var(--font-sans);
+  transition: border-color 0.15s, background 0.15s;
+}
+.btn-ghost:hover { border-color: var(--text-subtle); background: var(--accent-ghost); }
 
 /* ===== 等待界面 ===== */
 .waiting-container {
@@ -163,6 +201,11 @@ body {
 .resonance-block {
   font-family: var(--font-serif); font-size: 18px; line-height: 2;
   color: var(--text); margin-bottom: 32px; text-align: center;
+  animation: fadeInUp 0.6s ease-out;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .other-text-block {
   border-left: 2px solid var(--border); padding-left: 16px;
@@ -187,7 +230,11 @@ body {
 .icebreaker-item {
   font-size: 14px; color: var(--text-subtle); line-height: 1.8;
   padding: 8px 0; cursor: pointer; transition: color 0.15s;
+  animation: fadeInUp 0.5s ease-out both;
 }
+.icebreaker-item:nth-child(1) { animation-delay: 0.15s; }
+.icebreaker-item:nth-child(2) { animation-delay: 0.3s; }
+.icebreaker-item:nth-child(3) { animation-delay: 0.45s; }
 .icebreaker-item:hover { color: var(--text); }
 .icebreaker-label { font-size: 13px; color: var(--text-whisper); margin-bottom: 8px; }
 
@@ -357,7 +404,7 @@ body {
     &nbsp;·&nbsp;
     <a href="https://afdian.net/a/fata" target="_blank">爱发电</a>
     &nbsp;·&nbsp;
-    <a href="#" id="feedback-link">反馈与帮助</a>
+    <a href="https://github.com/gsailing19/fata/issues/new?template=feedback.yml" target="_blank">反馈与帮助</a>
   </p>
   <p class="footer-resources">
     需要找人聊聊？心理援助热线 010-82951332 · 生命热线 400-161-9995 · 24小时 · 免费 · 匿名
@@ -394,6 +441,15 @@ body {
 
   // HMAC 密钥（浏览器端生成，与服务端 HMAC_KEY 相同）
   let HMAC_KEY_RAW = '';
+  window.HMAC_KEY_RAW = undefined; // 暴露给 MatchEngine 模块访问，首次 HMAC 获取后更新
+
+  // 监听网络恢复后模型重新加载（来自 ModelLoader）
+  window.addEventListener('fata:model-ready', (e) => {
+    if (e.detail && e.detail.pipeline) {
+      MatchEngine.pipeline = e.detail.pipeline;
+      state.modelStatus = 'ready';
+    }
+  });
 
   // ===== 初始化 =====
   async function init() {
@@ -406,7 +462,7 @@ body {
     state.draft = LowSignalGuide.loadDraft();
 
     // 检查是否为回访用户
-    const history = loadFromIndexedDB('fata_history');
+    const history = await loadFromIndexedDB('fata_history');
     if (history && history.length > 0) {
       state.isReturningUser = true;
       state.pendingTexts = history;
@@ -433,7 +489,8 @@ body {
     } else {
       state.modelStatus = 'fallback';
       // 在降级模式下初始化（使用 TF-IDF）
-      // TODO: 实现 TF-IDF 降级初始化
+      // 不加载 Transformers.js pipeline，走字符 bigram + 余弦相似度降级
+      await MatchEngine.initialize({ mode: 'fallback' });
     }
 
     // 渲染首页
@@ -624,7 +681,7 @@ body {
     const signalResult = await LLMFallback.callWithTimeout('/api/llm/analyze', {
       prompt_type: 'signal_density',
       text_a: text
-    });
+    }, HMAC_KEY_RAW);
 
     // Step 2: 安全检测
     if (signalResult) {
@@ -636,6 +693,17 @@ body {
         } else if (safetyDecision.uiState === 'rejected') {
           showRejection(safetyDecision);
         }
+        return;
+      }
+    } else {
+      // LLM 不可用时，用本地关键词检查做兜底
+      const localCheck = SafetyHandler.localCheck(text);
+      if (localCheck.action === 'support') {
+        showSupportResources(SafetyHandler.resources);
+        return;
+      }
+      if (localCheck.action === 'reject') {
+        showRejection({ cooldownMinutes: 60 });
         return;
       }
     }
@@ -664,7 +732,7 @@ body {
       const intentResult = await LLMFallback.callWithTimeout('/api/llm/analyze', {
         prompt_type: 'intent_parse',
         text_a: text
-      });
+      }, HMAC_KEY_RAW);
       if (intentResult) {
         intentProfile = intentResult;
       }
@@ -683,8 +751,64 @@ body {
     if (matchResult.matched) {
       // 生成共鸣描述
       const resonance = await generateResonance(text, matchResult.matchInfo.otherText);
+      // 保存匹配历史
+      await saveToIndexedDB('fata_history', {
+        id: Date.now(),
+        text: text,
+        snippet: text.slice(0, 80),
+        status: 'matched',
+        timestamp: Date.now(),
+        matchEmail: matchResult.matchInfo.otherEmail
+      });
+      state.pendingTexts.push({
+        id: Date.now().toString(),
+        text: text,
+        snippet: text.slice(0, 80),
+        status: 'matched',
+        timestamp: Date.now()
+      });
       showMatchSuccess(matchResult, resonance, text);
+
+      // 异步发送双方通知邮件（不阻塞 UI）
+      const emailHashB = await sha256(matchResult.matchInfo.otherEmail || '');
+      ResendRetry.sendWithRetry({
+        matchA: {
+          email,
+          ownTextSnippet: text.slice(0, 120),
+          showOwnText: state.showTextToMatch,
+          seeOtherText: matchResult.matchInfo.otherText ? true : false,
+          textSnippet: matchResult.matchInfo.otherText
+            ? matchResult.matchInfo.otherText.slice(0, 120) : ''
+        },
+        matchB: {
+          email: matchResult.matchInfo.otherEmail,
+          ownTextSnippet: matchResult.matchInfo.otherText
+            ? matchResult.matchInfo.otherText.slice(0, 120) : '',
+          showOwnText: true,
+          seeOtherText: state.showTextToMatch,
+          textSnippet: state.showTextToMatch ? text.slice(0, 120) : '',
+          emailHash: emailHashB
+        },
+        resonance: resonance.resonance,
+        icebreakers: resonance.questions
+      }, matchResult.matchIssueNumber).catch(e => {
+        console.warn('fata: Resend notification failed', e);
+      });
     } else {
+      await saveToIndexedDB('fata_history', {
+        id: Date.now(),
+        text: text,
+        snippet: text.slice(0, 80),
+        status: 'pending',
+        timestamp: Date.now()
+      });
+      state.pendingTexts.push({
+        id: Date.now().toString(),
+        text: text,
+        snippet: text.slice(0, 80),
+        status: 'pending',
+        timestamp: Date.now()
+      });
       showNoMatch(matchResult);
     }
   }
@@ -694,7 +818,7 @@ body {
       prompt_type: 'resonance',
       text_a: textA,
       text_b: textB
-    });
+    }, HMAC_KEY_RAW);
     return result || {
       resonance: '你们在此刻的频率很接近。',
       questions: ['你当时在想什么？', '让TA推荐一首歌给你吧。', '告诉TA你那天的感受。']
@@ -723,8 +847,8 @@ body {
     const showOtherText = matchInfo.otherText && state.showTextToMatch;
 
     const icebreakersHTML = (resonance.questions || []).map((q, i) => `
-      <div class="icebreaker-item" onclick="navigator.clipboard.writeText('${q}')">
-        ${i + 1}. ${q}
+      <div class="icebreaker-item" data-copy="${escapeHTML(q)}">
+        ${i + 1}. ${escapeHTML(q)}
       </div>
     `).join('');
 
@@ -735,7 +859,7 @@ body {
         ${showOtherText ? `
         <div class="other-text-block">
           <div class="other-text-label">TA 写下了——</div>
-          <div class="other-text-content">"${matchInfo.otherText}"</div>
+          <div class="other-text-content">"${escapeHTML(matchInfo.otherText)}"</div>
         </div>` : ''}
 
         <div class="email-block">
@@ -754,7 +878,7 @@ body {
              href="mailto:${matchInfo.otherEmail}?subject=关于那件事——来自 fata 的引介&body=嘿。%0A%0Afata 说我们的文字频率很接近。%0A%0A${encodeURIComponent(resonance.resonance)}%0A%0A">
             写信给 TA
           </a>
-          <button class="btn-secondary" onclick="navigator.clipboard.writeText('${matchInfo.otherEmail}')">
+          <button class="btn-secondary" data-copy="${escapeHTML(matchInfo.otherEmail)}">
             复制邮箱
           </button>
           <button class="btn-secondary" onclick="fata.renderHome()">
@@ -763,6 +887,20 @@ body {
         </div>
       </div>
     `;
+
+    // 绑定 icebreaker 和复制邮箱的 click 事件（替代内联 onclick 防 XSS）
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.icebreaker-item').forEach(el => {
+        el.addEventListener('click', () => {
+          navigator.clipboard.writeText(el.dataset.copy).catch(() => {});
+        });
+      });
+      document.querySelectorAll('[data-copy]').forEach(el => {
+        el.addEventListener('click', () => {
+          navigator.clipboard.writeText(el.dataset.copy).catch(() => {});
+        });
+      });
+    });
   }
 
   function showNoMatch(matchResult) {
@@ -840,35 +978,92 @@ body {
     const messages = document.getElementById('interview-messages');
     const input = document.getElementById('interview-input');
     const sendBtn = document.getElementById('interview-send');
+    const answers = []; // 收集所有用户回答
 
     sendBtn.addEventListener('click', async () => {
       const text = input.value.trim();
       if (!text) return;
 
-      messages.innerHTML += `<div class="interview-msg user">${text}</div>`;
+      messages.innerHTML += `<div class="interview-msg user">${escapeHTML(text)}</div>`;
+      answers.push(text);
       input.value = '';
       round++;
 
       if (round >= 5 || text.includes('差不多了') || text.includes('就这样')) {
-        // 生成匹配画像
-        messages.innerHTML += `
-          <div class="interview-msg ai">
-            我根据你说的帮你整理了一段文字。你可以直接投递，也可以自己改。
-            <br><br>
-            <em>"我最近在..."</em>
-          </div>
-        `;
-        // TODO: 实际调用 LLM 生成画像
+        // 禁用输入
+        input.disabled = true;
+        sendBtn.disabled = true;
+        messages.innerHTML += '<div class="interview-msg ai">正在根据你的回答整理文字...</div>';
+
+        // 调用 LLM 生成匹配画像
+        try {
+          const allAnswers = answers.join('；');
+          const result = await LLMFallback.callWithTimeout('/api/llm/analyze', {
+            prompt_type: 'interview_compose',
+            text_a: allAnswers
+          }, HMAC_KEY_RAW);
+
+          const profile = (result && result.profile) || '我最近在...';
+          const profileHTML = escapeHTML(profile);
+          messages.innerHTML = messages.innerHTML.replace('正在根据你的回答整理文字...', '');
+          messages.innerHTML += `
+            <div class="interview-msg ai">
+              我根据你说的帮你整理了一段文字。可以直接投递，也可以改一改。
+              <br><br>
+              <em>"${profileHTML}"</em>
+            </div>
+            <div class="actions-row" style="margin-top:16px;">
+              <button class="btn-primary" id="interview-deliver">投递这段文字</button>
+              <button class="btn-secondary" id="interview-edit">自己改一下</button>
+            </div>
+          `;
+          document.getElementById('interview-deliver').addEventListener('click', () => {
+            // 将画像填入主文本区并提交
+            document.getElementById('app').innerHTML = '';
+            renderHome();
+            setTimeout(() => {
+              document.getElementById('user-text').value = profile;
+              handleDeliver();
+            }, 100);
+          });
+          document.getElementById('interview-edit').addEventListener('click', () => {
+            document.getElementById('app').innerHTML = '';
+            renderHome();
+            setTimeout(() => {
+              document.getElementById('user-text').value = profile;
+            }, 100);
+          });
+        } catch (e) {
+          console.warn('fata: interview compose failed', e);
+          // 降级：用原始回答拼接
+          const fallbackProfile = answers.join('。');
+          messages.innerHTML += `
+            <div class="interview-msg ai">
+              我根据你说的帮你整理了一段文字。可以直接投递，也可以改一改。
+              <br><br>
+              <em>"${escapeHTML(fallbackProfile)}"</em>
+            </div>
+          `;
+        }
       } else {
         // 下一轮问题
         messages.innerHTML += `
-          <div class="interview-msg ai">${getNextInterviewQuestion(text, round)}</div>
+          <div class="interview-msg ai">${escapeHTML(getNextInterviewQuestion(text, round))}</div>
         `;
       }
     });
   }
 
   // ===== 工具函数 =====
+
+  function escapeHTML(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
   function isWeChatOrQQ() {
     const ua = navigator.userAgent;
@@ -909,7 +1104,7 @@ body {
           <p class="email-privacy-note">
             fata 不会看到你的邮箱——它在你浏览器里加密后存入匹配池。<br>
             只有匹配成功时，双方各自收到对方邮箱。<br>
-            <a href="https://github.com/gsailing19/fata" target="_blank">审查源码验证这条承诺。</a>
+            <a href="/privacy.html" target="_blank">审查源码验证这条承诺。</a>
           </p>
           <input type="email" id="email-input" class="email-input"
                  placeholder="example@qq.com" autofocus>
@@ -954,12 +1149,14 @@ body {
   }
 
   async function encryptEmail(email) {
-    // 使用 AES-256-GCM 加密，密钥从用户邮箱派生的 PBKDF2 产生
+    // 使用 AES-256-GCM 加密，密钥从 HMAC_KEY_RAW 派生（与 decrypt 端对齐）
     // 加密后的格式：base64(iv + ciphertext)
     try {
-      const key = await _deriveKey(email);
-      const iv = crypto.getRandomValues(new Uint8Array(12));
       const encoder = new TextEncoder();
+      const keyData = encoder.encode(HMAC_KEY_RAW).slice(0, 32); // 256-bit
+      const key = await crypto.subtle.importKey('raw', keyData,
+        { name: 'AES-GCM' }, false, ['encrypt']);
+      const iv = crypto.getRandomValues(new Uint8Array(12));
       const ciphertext = await crypto.subtle.encrypt(
         { name: 'AES-GCM', iv },
         key,
@@ -971,33 +1168,9 @@ body {
       combined.set(new Uint8Array(ciphertext), iv.length);
       return btoa(String.fromCharCode(...combined));
     } catch (e) {
-      console.error('fata: encryptEmail failed, falling back to plaintext', e);
-      return email;
+      console.error('fata: encryptEmail failed', e);
+      throw e;
     }
-  }
-
-  async function _deriveKey(salt) {
-    // 从服务器获取的 HMAC_KEY 作为密钥素材
-    // PBKDF2 派生 AES-256 密钥
-    const keyMaterial = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(HMAC_KEY_RAW || 'fata-default-encryption-key'),
-      'PBKDF2',
-      false,
-      ['deriveKey']
-    );
-    return crypto.subtle.deriveKey(
-      {
-        name: 'PBKDF2',
-        salt: new TextEncoder().encode(salt),
-        iterations: 100000,
-        hash: 'SHA-256'
-      },
-      keyMaterial,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['encrypt', 'decrypt']
-    );
   }
 
   async function _fetchHMACKey() {
@@ -1023,24 +1196,81 @@ body {
   }
 
   async function loadWritingSnippets() {
-    // TODO: 从 IndexedDB 缓存或调用 LLM 生成写作启发片段
-    const snippets = [
+    const container = document.getElementById('snippet-scroll');
+    if (!container) return;
+
+    // 尝试从种子 Issue 加载（带 IndexedDB 24h 缓存）
+    try {
+      const cached = await loadSnippetCache();
+      if (cached && cached.snippets && cached.snippets.length > 0) {
+        renderSnippets(cached.snippets);
+        return;
+      }
+
+      const resp = await fetch('/api/github/issues?labels=seed&per_page=5&state=open');
+      if (resp.ok) {
+        const issues = await resp.json();
+        const snippets = issues
+          .map(i => (i.body && i.body.text_snippet) ? i.body.text_snippet : null)
+          .filter(Boolean)
+          .slice(0, 5);
+        if (snippets.length > 0) {
+          await saveSnippetCache(snippets);
+          renderSnippets(snippets);
+          return;
+        }
+      }
+    } catch (e) {
+      // API 不可用时用硬编码默认值（保持界面不空）
+    }
+
+    const defaults = [
       '今天下班看到一只猫在雨里躲，想给它撑伞但...',
       '失眠第三天。开始怀疑是不是床的问题而不是我的问题。',
       '很久没联系的朋友突然发了条消息。我没回。不知道回什么。'
     ];
+    renderSnippets(defaults);
+  }
 
+  function renderSnippets(snippets) {
     const container = document.getElementById('snippet-scroll');
-    if (container) {
-      container.innerHTML = `
-        <div class="snippet-label">最近有人在写——</div>
-        ${snippets.map(s => `<div class="snippet-item">"${s}"</div>`).join('')}
-      `;
-    }
+    if (!container) return;
+    container.innerHTML = `
+      <div class="snippet-label">最近有人在写——</div>
+      ${snippets.map(s => `<div class="snippet-item">"${escapeHTML(s)}"</div>`).join('')}
+    `;
+  }
+
+  async function loadSnippetCache() {
+    try {
+      const raw = localStorage.getItem('fata_snippet_cache');
+      if (!raw) return null;
+      const cached = JSON.parse(raw);
+      if (Date.now() - cached.ts < 86400000) return cached; // 24h
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  async function saveSnippetCache(snippets) {
+    try {
+      localStorage.setItem('fata_snippet_cache', JSON.stringify({
+        snippets,
+        ts: Date.now()
+      }));
+    } catch (e) { /* ignore */ }
   }
 
   function getEchoSnippet() {
-    // TODO: 从 AI 种子池中选取一条频率最接近的回声片段
+    // 尝试从缓存的种子片段中选一条
+    try {
+      const raw = localStorage.getItem('fata_snippet_cache');
+      if (raw) {
+        const cached = JSON.parse(raw);
+        if (cached.snippets && cached.snippets.length > 0) {
+          return cached.snippets[Math.floor(Math.random() * cached.snippets.length)];
+        }
+      }
+    } catch (e) { /* ignore */ }
     return '最近在学吉他。手指磨破了但很开心。不知道为什么突然想做一件没有用的事。';
   }
 
@@ -1063,21 +1293,108 @@ body {
     return { pending: '等待中', matched: '已匹配', expired: '已过期' }[status] || status;
   }
 
+  async function sha256(message) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
   async function loadFromIndexedDB(storeName) {
-    // TODO: 实现 IndexedDB 读取
-    return null;
+    try {
+      return new Promise((resolve) => {
+        const DB_NAME = 'fata_user_data';
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+          }
+        };
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction(storeName, 'readonly');
+          const store = tx.objectStore(storeName);
+          const getAll = store.getAll();
+          getAll.onsuccess = () => resolve(getAll.result || []);
+          getAll.onerror = () => resolve([]);
+        };
+        request.onerror = () => resolve([]);
+      });
+    } catch (e) {
+      console.warn('fata: loadFromIndexedDB failed', e);
+      return [];
+    }
+  }
+
+  async function saveToIndexedDB(storeName, entry) {
+    try {
+      const DB_NAME = 'fata_user_data';
+      return new Promise((resolve) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+          }
+        };
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          store.put(entry);
+          tx.oncomplete = () => resolve();
+          request.onerror = () => resolve();
+        };
+        request.onerror = () => resolve();
+      });
+    } catch (e) {
+      console.warn('fata: saveToIndexedDB failed', e);
+    }
   }
 
   // ===== 暴露 API =====
   window.fata = {
     renderHome,
-    showWritePage: () => /* 重新渲染写作页 */ renderHome(),
-    showHistory: () => state.isReturningUser = true && renderHome(),
-    expandEditor: () => { /* 回到编辑区 */ renderHome(); },
-    forceSubmit: () => { /* 二次确认 + 投递 */ },
-    saveAsDraft: (text) => { LowSignalGuide.saveDraft(text); },
+    showWritePage: () => renderHome(),
+    showHistory: () => { state.isReturningUser = true; renderHome(); },
+    expandEditor: (text) => {
+      if (typeof text === 'string' && text) {
+        setTimeout(() => {
+          const ta = document.getElementById('user-text');
+          if (ta) ta.value = text;
+        }, 0);
+      }
+      renderHome();
+    },
+    forceSubmit: () => handleDeliver(),
+    saveAsDraft: (text) => {
+      const txt = typeof text === 'string' && text
+        ? text
+        : (document.getElementById('user-text')?.value || '');
+      LowSignalGuide.saveDraft(txt);
+    },
     switchMatchMode: (mode) => { state.matchMode = mode; renderHome(); },
-    submit: handleDeliver
+    submit: handleDeliver,
+    ui: {
+      showWritePage: () => renderHome(),
+      showHistory: () => { state.isReturningUser = true; renderHome(); },
+      expandEditor: (text) => {
+        if (typeof text === 'string' && text) {
+          setTimeout(() => {
+            const ta = document.getElementById('user-text');
+            if (ta) ta.value = text;
+          }, 0);
+        }
+        renderHome();
+      },
+      forceSubmit: () => handleDeliver(),
+      saveAsDraft: () => {
+        const txt = document.getElementById('user-text')?.value || '';
+        LowSignalGuide.saveDraft(txt);
+      }
+    }
   };
 
   // ===== 启动 =====
