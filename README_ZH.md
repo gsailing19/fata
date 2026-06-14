@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo/logo.svg" alt="fata logo" width="80">
+  <img src="logo/logo-horizontal.svg" alt="fata" width="240">
 </p>
 
 # fata

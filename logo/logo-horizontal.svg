@@ -1,0 +1,22 @@
+<svg viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <!-- fata horizontal logo · Wave & Type -->
+  <path d="M 12 38 Q 32 18, 44 32 T 72 32 T 100 32 T 128 32 T 156 32 T 188 38"
+        fill="none" stroke="#2a2a2a" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M 14 38 Q 34 20, 46 34 T 72 34 T 100 34 T 128 34 T 154 34 T 186 38"
+        fill="none" stroke="#2a2a2a" stroke-width="0.5" opacity="0.25" stroke-linecap="round"/>
+  <path d="M 16 38 Q 36 22, 48 36 T 72 36 T 100 36 T 128 36 T 152 36 T 184 38"
+        fill="none" stroke="#2a2a2a" stroke-width="0.3" opacity="0.12" stroke-linecap="round"/>
+  <text x="34" y="54" font-family="Georgia,serif" font-size="28" font-style="italic"
+        fill="#2a2a2a" text-anchor="middle">f</text>
+  <text x="68" y="46" font-family="Georgia,serif" font-size="28" font-style="italic"
+        fill="#2a2a2a" text-anchor="middle">a</text>
+  <text x="100" y="54" font-family="Georgia,serif" font-size="28" font-style="italic"
+        fill="#2a2a2a" text-anchor="middle">t</text>
+  <text x="132" y="50" font-family="Georgia,serif" font-size="28" font-style="italic"
+        fill="#2a2a2a" text-anchor="middle">a</text>
+  <circle cx="100" cy="32" r="2.2" fill="#c47a4a"/>
+  <circle cx="100" cy="32" r="8" fill="none" stroke="#c47a4a" stroke-width="0.3" opacity="0.3"/>
+  <circle cx="34" cy="48" r="1.4" fill="#c47a4a" opacity="0.5"/>
+  <circle cx="12" cy="38" r="1.2" fill="#2a2a2a"/>
+  <circle cx="188" cy="38" r="1.2" fill="#2a2a2a"/>
+</svg>
