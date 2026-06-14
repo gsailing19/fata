@@ -78,3 +78,32 @@
 
 ---
 **执行命令**: `/loop fata 生产上线审计 — 从 Loop 1 开始，每轮完成后暂停等我审计确认。`
+
+---
+
+## 2026-06-14 审计结论
+
+六轮生产审计 + 深度代码审计完成后，发现 **6 个运行时 bug**（3 致命 + 3 高），以及若干半完成功能。修复和补全工作于 2026-06-14~15 完成：
+
+**Bug 修复（9 个）**：
+- _deriveKey() importKey() 参数错误 → encrypt/decrypt 密钥对齐到 HMAC_KEY_RAW
+- Transformers.js bare import → 改为 CDN 完整 URL 动态导入 + pipeline 传递
+- fata.ui 命名空间缺失 → 添加 .ui 子对象并修复所有空实现
+- HMAC 密钥未传给 LLM → 三处 callWithTimeout() 补上 HMAC_KEY_RAW
+- CSP 缺少 jsDelivr → connect-src 补充 cdn.jsdelivr.net
+- llm-fallback.js 重复函数 → 删除第二个定义块
+- MatchEngine 缺少 export → 添加 + window.HMAC_KEY_RAW 暴露
+- 匹配池从未写入 → 匹配成功后 POST /api/github/issues
+- API 调用相对路径 → 改为 https://worker.fata.uk/api/...
+
+**功能补全（7 项）**：
+- 采访模式 LLM 集成（Worker INTERVIEW_COMPOSE prompt + 前端调用）
+- IndexedDB 匹配历史读写
+- Resend 邮件通知集成
+- Worker CORS 支持 + 限流 + Cron scheduled handler
+- privacy.html + 反馈 Issue 模板
+- API URL 改为绝对路径（绕过 _redirects 被 Pages 忽略的问题）
+- 种子注入器 HMAC 签名修复 + 45/45 种子成功写入
+
+**部署**：Worker 通过 API token 部署，Pages 通过 wrangler pages deploy 推送。fata.uk 已更新。
+
