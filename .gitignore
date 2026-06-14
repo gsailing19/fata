@@ -26,7 +26,12 @@ todo.md
 config/github-setup.md
 
 # --- 内部开发（设计草稿、配置模板） ---
-logo/
+logo/logo-v*.html
+logo/logo-showcase.html
+logo/logo-sketches.html
+logo/logo-system.html
+logo/logo-wave-type.html
+logo/截屏*
 assets/
 config/wrangler.toml.example
 config/algorithm-config.example.json
