@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>fata — 找到文字频率最接近的陌生人</title>
+<title>fata</title>
 
 <!-- favicon -->
 <link rel="icon" type="image/svg+xml" href="/logo/logo.svg">
 <link rel="apple-touch-icon" href="/logo/logo-unified-v2.png">
 
 <!-- OG tags for social sharing -->
-<meta property="og:title" content="fata — 找到文字频率最接近的陌生人">
-<meta property="og:description" content="写一段话，浏览器里的 AI 会找到此刻文字频率最接近的陌生人。通信在你自己的邮箱里进行。">
+<meta property="og:title" content="fata">
+<meta property="og:description" content="">
 <meta property="og:url" content="https://fata.uk">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://fata.uk/logo/logo-unified-v2.png">
@@ -33,22 +33,32 @@
   object-src 'none';">
 
 <style>
-/* ===== fata 品牌样式 ===== */
+/* ===== fata · Apple-style Design System ===== */
 :root {
-  --bg: #faf9f6;
+  --bg: #f5f5f7;
   --bg-card: #fff;
-  --text: #2a2a2a;
-  --text-subtle: #8a8a8a;
-  --text-whisper: #bbb;
-  --border: #e8e4dc;
-  --border-faint: #f0ebe0;
-  --accent: #2a2a2a;
-  --accent-ghost: rgba(42,42,42,0.06);
-  --font-serif: Georgia, 'Noto Serif SC', serif;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --radius: 4px;
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.04);
-  --max-width: 560px;
+  --text: #1d1d1f;
+  --text-subtle: #86868b;
+  --text-whisper: #aeaeb2;
+  --border: #d2d2d7;
+  --border-faint: #e8e8ed;
+  --accent: #1d1d1f;
+  --accent-ghost: rgba(0,0,0,0.04);
+  --warm: #c47a4a;
+  --warm-ghost: rgba(196,122,74,0.06);
+  --warm-glow: rgba(196,122,74,0.15);
+  --wave-line: rgba(0,0,0,0.05);
+  --font-serif: Georgia, 'Noto Serif SC', 'Noto Serif', serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font-mono: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-float: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+  --spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --max-width: 540px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -56,134 +66,173 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
-  line-height: 1.6;
+  font-size: 17px;
+  line-height: 1.47059;
+  letter-spacing: -0.022em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ===== 布局 ===== */
 .page {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 40px 24px 80px;
+  padding: 60px 24px 100px;
   min-height: 100vh;
 }
 
 /* ===== 首页 ===== */
 .landing {
   display: flex; flex-direction: column; align-items: center;
-  padding-top: 80px; text-align: center;
+  padding-top: 100px; text-align: center;
 }
 .landing-title {
   font-family: var(--font-serif);
-  font-size: 20px; font-weight: normal; color: var(--text);
-  margin-bottom: 40px; line-height: 1.8;
+  font-size: 28px; font-weight: 400; color: var(--text);
+  margin-bottom: 12px; line-height: 1.3;
+  letter-spacing: -0.015em; text-wrap: balance;
 }
+.landing-wave-line {
+  display: block; width: 120px; height: 24px;
+  margin: 0 auto 48px; opacity: 0.45;
+}
+.landing-wave-line svg { display: block; }
 .landing-editor {
-  width: 100%; max-width: 480px; margin-bottom: 16px;
+  width: 100%; max-width: 480px; margin-bottom: 20px;
 }
 .landing-editor textarea {
-  width: 100%; min-height: 160px; padding: 20px 24px;
-  font-family: var(--font-serif); font-size: 15px; line-height: 2;
+  width: 100%; min-height: 180px; padding: 24px;
+  font-family: var(--font-serif); font-size: 16px; line-height: 1.8;
   border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--bg-card); color: var(--text);
   resize: vertical; outline: none;
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.25s var(--spring), box-shadow 0.25s var(--spring);
 }
 .landing-editor textarea::placeholder {
   color: var(--text-whisper); font-style: italic;
 }
 .landing-editor textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(42,42,42,0.1), var(--shadow-card);
+  border-color: var(--warm);
+  box-shadow: 0 0 0 4px rgba(196,122,74,0.1), var(--shadow-sm);
   outline: none;
 }
+
 /* 起笔提示 */
 .writing-prompts {
   display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
-  margin-bottom: 24px; max-width: 480px;
+  margin-bottom: 28px; max-width: 480px;
 }
 .writing-prompt {
-  font-size: 13px; color: var(--text-subtle); padding: 6px 12px;
-  border: 1px solid var(--border-faint); border-radius: 16px;
-  cursor: pointer; background: transparent; font-family: var(--font-sans);
+  font-size: 13px; color: var(--text-subtle); padding: 7px 16px;
+  border: 1px solid var(--border); border-radius: 20px;
+  cursor: pointer; background: rgba(255,255,255,0.6); font-family: var(--font-sans);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.25s var(--spring);
 }
-.writing-prompt:hover { border-color: var(--text-subtle); }
+.writing-prompt:hover {
+  border-color: var(--warm); color: var(--warm);
+  background: rgba(255,255,255,0.9); transform: translateY(-1px);
+  box-shadow: var(--shadow-card);
+}
 
 /* 写作启发片段 */
 .snippet-scroll {
-  margin-bottom: 32px; max-width: 480px; width: 100%;
+  margin-bottom: 36px; max-width: 480px; width: 100%;
 }
 .snippet-item {
-  font-family: var(--font-serif); font-size: 13px; color: var(--text-whisper);
-  line-height: 1.8; margin-bottom: 12px; font-style: italic;
-  text-align: left; padding-left: 12px; border-left: 1px solid var(--border-faint);
+  font-family: var(--font-serif); font-size: 14px; color: var(--text-subtle);
+  line-height: 1.8; margin-bottom: 14px; font-style: italic;
+  text-align: left; padding-left: 14px; border-left: 2px solid rgba(196,122,74,0.3);
 }
 .snippet-label {
-  font-size: 11px; color: var(--text-whisper); text-align: left;
-  margin-bottom: 12px; text-transform: none;
+  font-size: 12px; color: var(--text-whisper); text-align: left;
+  margin-bottom: 14px; letter-spacing: 0.02em;
 }
 
 /* 隐私选择行 */
 .privacy-options {
-  display: flex; gap: 24px; justify-content: center; margin-bottom: 24px;
+  display: flex; gap: 28px; justify-content: center; margin-bottom: 28px;
   font-size: 13px; color: var(--text-subtle);
 }
 .privacy-options label { cursor: pointer; display: flex; align-items: center; gap: 6px; }
-.privacy-options input[type=checkbox] { accent-color: var(--accent); }
+.privacy-options input[type=checkbox] { accent-color: var(--warm); }
 
 /* 匹配模式选择 */
 .match-mode-selector {
-  display: flex; gap: 8px; justify-content: center; margin-bottom: 24px;
+  display: flex; gap: 2px; justify-content: center; margin-bottom: 32px;
+  background: rgba(0,0,0,0.04); padding: 4px; border-radius: 10px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .match-mode-btn {
-  font-size: 12px; padding: 6px 14px; border-radius: 16px;
-  border: 1px solid var(--border); background: transparent;
+  font-size: 12px; padding: 7px 18px; border-radius: 8px;
+  border: none; background: transparent;
   color: var(--text-subtle); cursor: pointer; font-family: var(--font-sans);
+  transition: all 0.25s var(--spring); font-weight: 500;
 }
 .match-mode-btn.active {
-  background: var(--accent); color: #fff; border-color: var(--accent);
+  background: #fff; color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
 }
 
 /* 投递按钮 */
 .btn-deliver {
-  font-family: var(--font-serif); font-size: 16px;
-  padding: 12px 40px; border: none; border-radius: var(--radius);
-  background: var(--accent); color: #fff; cursor: pointer;
-  transition: opacity 0.2s, transform 0.15s;
+  font-family: var(--font-sans); font-size: 16px; font-weight: 500;
+  padding: 14px 48px; border: none; border-radius: 28px;
+  background: var(--warm); color: #fff; cursor: pointer;
+  transition: all 0.3s var(--spring);
+  box-shadow: 0 2px 8px rgba(196,122,74,0.2);
+  letter-spacing: -0.01em;
 }
-.btn-deliver:hover { opacity: 0.85; transform: scale(1.02); }
-.btn-deliver:active { transform: scale(0.98); }
-.btn-deliver:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-deliver:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 24px rgba(196,122,74,0.3);
+}
+.btn-deliver:active { transform: scale(0.97); }
+.btn-deliver:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* 通用按钮微交互 */
 .btn-primary {
-  font-family: var(--font-serif); font-size: 15px;
-  padding: 12px 32px; border: none; border-radius: var(--radius);
-  background: var(--accent); color: #fff; cursor: pointer;
-  transition: opacity 0.2s, transform 0.15s;
+  font-family: var(--font-sans); font-size: 15px; font-weight: 500;
+  padding: 13px 32px; border: none; border-radius: 24px;
+  background: var(--warm); color: #fff; cursor: pointer;
+  transition: all 0.3s var(--spring);
+  box-shadow: 0 2px 8px rgba(196,122,74,0.2);
 }
-.btn-primary:hover { opacity: 0.85; transform: scale(1.02); }
-.btn-primary:active { transform: scale(0.98); }
+.btn-primary:hover { transform: scale(1.03); box-shadow: 0 8px 24px rgba(196,122,74,0.3); }
+.btn-primary:active { transform: scale(0.97); }
 .btn-ghost {
-  font-size: 14px; padding: 10px 24px; border: 1px solid var(--border);
-  border-radius: var(--radius); background: transparent;
+  font-size: 14px; padding: 11px 24px; border: 1px solid var(--border);
+  border-radius: 24px; background: rgba(255,255,255,0.5);
   color: var(--text); cursor: pointer; font-family: var(--font-sans);
-  transition: border-color 0.15s, background 0.15s;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.25s var(--spring);
 }
-.btn-ghost:hover { border-color: var(--text-subtle); background: var(--accent-ghost); }
+.btn-ghost:hover {
+  border-color: var(--text-subtle);
+  background: rgba(255,255,255,0.8);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card);
+}
+
+/* 采访入口链接 */
+#interview-link { transition: color 0.2s; }
+#interview-link:hover { color: var(--warm) !important; }
 
 /* ===== 等待界面 ===== */
 .waiting-container {
   display: flex; flex-direction: column; align-items: center;
-  padding-top: 80px; text-align: center;
+  padding-top: 120px; text-align: center;
 }
 .waiting-wave {
-  width: 120px; height: 60px; margin-bottom: 32px;
-  /* 波形动画 — CSS 简化版 */
-  display: flex; align-items: flex-end; justify-content: center; gap: 4px;
+  width: 120px; height: 60px; margin-bottom: 40px;
+  display: flex; align-items: flex-end; justify-content: center; gap: 5px;
 }
 .wave-bar {
-  width: 6px; background: var(--accent); border-radius: 3px;
+  width: 5px; background: var(--warm); border-radius: 3px;
   animation: wave 1.2s ease-in-out infinite;
 }
 .wave-bar:nth-child(1) { height: 20px; animation-delay: 0s; }
@@ -193,168 +242,239 @@ body {
 .wave-bar:nth-child(5) { height: 24px; animation-delay: 0.6s; }
 @keyframes wave { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(0.4); } }
 
-.waiting-text { font-family: var(--font-serif); font-size: 16px; color: var(--text); }
-.waiting-sub { font-size: 13px; color: var(--text-subtle); margin-top: 8px; }
+.waiting-text {
+  font-family: var(--font-serif); font-size: 18px; color: var(--text);
+  letter-spacing: -0.01em;
+}
+.waiting-sub { font-size: 14px; color: var(--text-subtle); margin-top: 10px; }
 
 /* ===== 匹配成功页 ===== */
-.match-result { padding-top: 40px; max-width: 480px; margin: 0 auto; }
+.match-result { padding-top: 60px; max-width: 480px; margin: 0 auto; }
 .resonance-block {
-  font-family: var(--font-serif); font-size: 18px; line-height: 2;
-  color: var(--text); margin-bottom: 32px; text-align: center;
-  animation: fadeInUp 0.6s ease-out;
+  font-family: var(--font-serif); font-size: 20px; line-height: 1.8;
+  color: var(--text); margin-bottom: 36px; text-align: center;
+  letter-spacing: -0.01em; text-wrap: balance;
+  animation: fadeInUp 0.7s var(--spring);
 }
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.other-text-block {
-  border-left: 2px solid var(--border); padding-left: 16px;
-  margin-bottom: 24px;
+
+/* 共振环动画 */
+.resonance-rings {
+  width: 140px; height: 140px;
+  margin: 0 auto 32px;
+  position: relative;
 }
-.other-text-label { font-size: 13px; color: var(--text-whisper); margin-bottom: 8px; }
+.resonance-rings svg { display: block; width: 100%; height: 100%; }
+
+/* 波形分隔线 */
+.wave-sep {
+  width: 80px; height: 16px;
+  margin: 28px auto;
+  opacity: 0.35;
+}
+.wave-sep svg { display: block; }
+
+.other-text-block {
+  border-left: 2px solid rgba(196,122,74,0.3); padding-left: 18px;
+  margin-bottom: 28px;
+}
+.other-text-label { font-size: 13px; color: var(--text-whisper); margin-bottom: 10px; }
 .other-text-content {
-  font-family: var(--font-serif); font-size: 14px; font-style: italic;
+  font-family: var(--font-serif); font-size: 15px; font-style: italic;
   color: var(--text-subtle); line-height: 1.9;
 }
+
 .email-block {
-  background: var(--accent-ghost); padding: 20px 24px; border-radius: var(--radius);
-  margin-bottom: 24px; text-align: center;
+  background: var(--warm-ghost); padding: 24px 28px; border-radius: var(--radius-lg);
+  margin-bottom: 28px; text-align: center;
+  border: 1px solid rgba(196,122,74,0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
-.email-label { font-size: 13px; color: var(--text-whisper); margin-bottom: 6px; }
+.email-label { font-size: 13px; color: var(--text-whisper); margin-bottom: 8px; }
 .email-address {
-  font-size: 18px; font-weight: bold; color: var(--text);
-  font-family: var(--font-mono, monospace); letter-spacing: 0.5px;
+  font-size: 20px; font-weight: 600; color: var(--text);
+  font-family: var(--font-mono); letter-spacing: -0.01em;
   word-break: break-all;
 }
-.icebreakers { margin-bottom: 32px; }
+
+.icebreakers { margin-bottom: 36px; }
 .icebreaker-item {
-  font-size: 14px; color: var(--text-subtle); line-height: 1.8;
-  padding: 8px 0; cursor: pointer; transition: color 0.15s;
-  animation: fadeInUp 0.5s ease-out both;
+  font-size: 15px; color: var(--text-subtle); line-height: 2;
+  padding: 10px 0; cursor: pointer;
+  transition: color 0.2s, transform 0.2s var(--spring);
+  animation: fadeInUp 0.5s var(--spring) both;
 }
 .icebreaker-item:nth-child(1) { animation-delay: 0.15s; }
 .icebreaker-item:nth-child(2) { animation-delay: 0.3s; }
 .icebreaker-item:nth-child(3) { animation-delay: 0.45s; }
-.icebreaker-item:hover { color: var(--text); }
-.icebreaker-label { font-size: 13px; color: var(--text-whisper); margin-bottom: 8px; }
+.icebreaker-item:hover { color: var(--text); transform: translateX(4px); }
+.icebreaker-label { font-size: 13px; color: var(--text-whisper); margin-bottom: 10px; }
 
-.actions-row { display: flex; gap: 12px; justify-content: center; }
+.actions-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 .btn-email {
-  font-family: var(--font-serif); font-size: 15px;
-  padding: 12px 32px; border-radius: var(--radius);
-  background: var(--accent); color: #fff; text-decoration: none; cursor: pointer;
+  font-family: var(--font-sans); font-size: 15px; font-weight: 500;
+  padding: 13px 32px; border-radius: 24px;
+  background: var(--warm); color: #fff; text-decoration: none; cursor: pointer;
   border: none; display: inline-block;
+  box-shadow: 0 2px 8px rgba(196,122,74,0.2);
+  transition: all 0.3s var(--spring);
 }
-.btn-email:hover { opacity: 0.85; }
+.btn-email:hover { transform: scale(1.03); box-shadow: 0 8px 24px rgba(196,122,74,0.3); }
 .btn-secondary {
-  font-size: 14px; padding: 12px 24px; border-radius: var(--radius);
-  border: 1px solid var(--border); background: transparent;
+  font-size: 14px; padding: 12px 24px; border-radius: 24px;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.5);
   color: var(--text); cursor: pointer; font-family: var(--font-sans);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.25s var(--spring);
+}
+.btn-secondary:hover {
+  border-color: var(--text-subtle);
+  background: rgba(255,255,255,0.8);
+  transform: translateY(-1px);
 }
 
 /* ===== 无匹配等待页 ===== */
 .no-match {
   display: flex; flex-direction: column; align-items: center;
-  padding-top: 80px; text-align: center;
+  padding-top: 100px; text-align: center;
 }
 .no-match-main {
-  font-family: var(--font-serif); font-size: 18px; margin-bottom: 16px;
+  font-family: var(--font-serif); font-size: 20px; margin-bottom: 16px;
+  letter-spacing: -0.01em;
 }
-.no-match-sub { font-size: 14px; color: var(--text-subtle); margin-bottom: 32px; }
+.no-match-sub { font-size: 15px; color: var(--text-subtle); margin-bottom: 36px; }
 .echo-snippet {
-  font-family: var(--font-serif); font-size: 14px; font-style: italic;
-  color: var(--text-whisper); max-width: 400px; line-height: 1.9;
-  padding: 16px 20px; border: 1px dashed var(--border-faint);
-  border-radius: var(--radius); margin-bottom: 24px;
+  font-family: var(--font-serif); font-size: 15px; font-style: italic;
+  color: var(--text-subtle); max-width: 400px; line-height: 1.9;
+  padding: 20px 24px; border: 1px dashed rgba(196,122,74,0.2);
+  border-radius: var(--radius-lg); margin-bottom: 28px;
 }
 
 /* ===== AI 采访模式 ===== */
-.interview-container { padding-top: 40px; max-width: 480px; margin: 0 auto; }
-.interview-messages { margin-bottom: 24px; }
+.interview-container { padding-top: 60px; max-width: 480px; margin: 0 auto; }
+.interview-messages { margin-bottom: 28px; }
 .interview-msg {
-  font-size: 15px; line-height: 1.8; margin-bottom: 16px; padding: 12px 16px;
+  font-size: 15px; line-height: 1.7; margin-bottom: 16px; padding: 14px 18px;
   border-radius: var(--radius); max-width: 85%;
+  animation: fadeInUp 0.4s var(--spring) both;
 }
 .interview-msg.ai {
-  background: var(--accent-ghost); color: var(--text);
+  background: rgba(0,0,0,0.03); color: var(--text);
   margin-right: auto; font-family: var(--font-serif);
+  border-bottom-left-radius: 4px;
 }
 .interview-msg.user {
   background: var(--bg-card); color: var(--text);
-  margin-left: auto; border: 1px solid var(--border-faint);
+  margin-left: auto; box-shadow: var(--shadow-sm);
+  border-bottom-right-radius: 4px;
   text-align: right;
 }
 .interview-input-row { display: flex; gap: 8px; }
 .interview-input {
-  flex: 1; padding: 10px 14px; font-size: 14px;
-  border: 1px solid var(--border); border-radius: var(--radius);
+  flex: 1; padding: 13px 18px; font-size: 15px;
+  border: 1px solid var(--border); border-radius: 24px;
   background: var(--bg-card); font-family: var(--font-sans);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s var(--spring), box-shadow 0.2s var(--spring);
+}
+.interview-input:focus {
+  border-color: var(--warm);
+  box-shadow: 0 0 0 4px rgba(196,122,74,0.1);
+  outline: none;
 }
 .interview-send {
-  padding: 10px 18px; font-size: 14px; border-radius: var(--radius);
-  background: var(--accent); color: #fff; border: none; cursor: pointer;
+  padding: 10px 20px; font-size: 14px; border-radius: 24px;
+  background: var(--warm); color: #fff; border: none; cursor: pointer;
+  font-family: var(--font-sans); font-weight: 500;
+  transition: all 0.3s var(--spring);
 }
+.interview-send:hover { transform: scale(1.05); }
 
 /* ===== 回访用户首页 ===== */
-.returning-home { padding-top: 40px; max-width: 480px; margin: 0 auto; }
+.returning-home { padding-top: 60px; max-width: 480px; margin: 0 auto; }
 .returning-summary {
-  font-family: var(--font-serif); font-size: 16px; margin-bottom: 32px;
+  font-family: var(--font-serif); font-size: 17px; margin-bottom: 36px;
   text-align: center; line-height: 1.8;
 }
 .text-history-item {
-  padding: 14px 16px; border: 1px solid var(--border-faint);
-  border-radius: var(--radius); margin-bottom: 10px;
+  padding: 16px 18px; background: var(--bg-card);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
   display: flex; justify-content: space-between; align-items: center;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s var(--spring), box-shadow 0.2s var(--spring);
+}
+.text-history-item:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-float);
 }
 .text-history-date { font-size: 12px; color: var(--text-whisper); }
 .text-history-topic { font-size: 14px; color: var(--text); }
 .text-history-status {
-  font-size: 12px; padding: 2px 8px; border-radius: 10px;
+  font-size: 12px; padding: 3px 10px; border-radius: 12px; font-weight: 500;
 }
-.status-pending { background: #ddf4e8; color: #1a7f4b; }
-.status-matched { background: #e8e0f0; color: #6b4d8a; }
-.status-expired { background: #fce4e4; color: #c42e2e; }
+.status-pending { background: #e8f5e9; color: #2e7d32; }
+.status-matched { background: #f3e5f5; color: #7b1fa2; }
+.status-expired { background: #fce4ec; color: #c62828; }
 
 /* ===== 加载/进度 ===== */
-.model-loading { text-align: center; padding-top: 80px; }
+.model-loading { text-align: center; padding-top: 120px; }
 .progress-bar {
   width: 200px; height: 3px; background: var(--border-faint);
-  border-radius: 2px; margin: 16px auto; overflow: hidden;
+  border-radius: 2px; margin: 20px auto; overflow: hidden;
 }
 .progress-fill {
-  height: 100%; background: var(--accent); border-radius: 2px;
-  transition: width 0.3s;
+  height: 100%; background: var(--warm); border-radius: 2px;
+  transition: width 0.4s var(--spring);
 }
 
 /* ===== 遮罩 (微信/QQ引导) ===== */
 .browser-guide-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
   display: flex; align-items: center; justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 .browser-guide-box {
-  background: var(--bg-card); padding: 32px 28px; border-radius: var(--radius);
-  text-align: center; max-width: 320px; font-size: 14px; line-height: 1.8;
+  background: rgba(255,255,255,0.92); padding: 36px 32px;
+  border-radius: var(--radius-lg); text-align: center;
+  max-width: 320px; font-size: 14px; line-height: 1.8;
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
-.browser-guide-box .arrow-icon { font-size: 32px; margin-bottom: 12px; }
+.browser-guide-box .arrow-icon { font-size: 36px; margin-bottom: 16px; }
 
 /* ===== 底部 ===== */
 .footer {
-  max-width: var(--max-width); margin: 80px auto 0; padding: 24px 0;
-  border-top: 1px solid var(--border-faint); text-align: center;
-  font-size: 11px; color: var(--text-whisper); line-height: 2;
+  max-width: var(--max-width); margin: 100px auto 0; padding: 28px 0;
+  border-top: 1px solid rgba(0,0,0,0.06); text-align: center;
+  font-size: 12px; color: var(--text-whisper); line-height: 2;
+  letter-spacing: 0.01em;
 }
-.footer a { color: var(--text-subtle); }
-.footer-resources { margin-top: 8px; color: var(--text-whisper); }
+.footer a { color: var(--text-subtle); transition: color 0.2s; }
+.footer a:hover { color: var(--warm); }
+.footer-resources { margin-top: 10px; color: var(--text-whisper); }
 
 /* ===== 移动端适配 ===== */
 @media (max-width: 414px) {
-  .page { padding: 24px 16px 60px; }
-  .landing { padding-top: 40px; }
-  .landing-title { font-size: 17px; }
-  .resonance-block { font-size: 16px; }
-  .email-address { font-size: 15px; }
-  .actions-row { flex-direction: column; }
+  .page { padding: 40px 18px 80px; }
+  .landing { padding-top: 60px; }
+  .landing-title { font-size: 22px; }
+  .resonance-block { font-size: 17px; }
+  .email-address { font-size: 16px; }
+  .actions-row { flex-direction: column; align-items: center; }
+  .resonance-rings { width: 100px; height: 100px; }
+  .landing-wave-line { width: 80px; height: 18px; }
+  .privacy-options { flex-direction: column; gap: 12px; }
+  .match-mode-selector { flex-direction: column; gap: 2px; }
+  .btn-deliver { padding: 14px 40px; font-size: 15px; }
 }
 
 /* --- 邮箱输入弹窗 --- */
@@ -362,33 +482,48 @@ body {
   position: fixed; inset: 0; z-index: 1000;
   background: rgba(0,0,0,0.35); display: flex;
   align-items: center; justify-content: center;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .email-modal {
-  background: #fff; border-radius: 16px; padding: 32px 28px;
-  max-width: 380px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.94); border-radius: var(--radius-lg);
+  padding: 36px 30px; max-width: 380px; width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   text-align: center;
 }
 .email-modal h3 {
-  font-family: var(--font-serif); font-size: 20px;
-  color: var(--text-body); margin: 0 0 12px 0; font-weight: 400;
+  font-family: var(--font-serif); font-size: 22px;
+  color: var(--text); margin: 0 0 14px 0; font-weight: 400;
+  letter-spacing: -0.01em;
 }
 .email-privacy-note {
-  font-size: 13px; color: var(--text-whisper); line-height: 1.7; margin: 0 0 20px 0;
+  font-size: 14px; color: var(--text-subtle); line-height: 1.7; margin: 0 0 24px 0;
 }
-.email-privacy-note a { color: var(--accent); text-decoration: none; }
+.email-privacy-note a { color: var(--warm); text-decoration: none; }
 .email-input {
-  width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px;
-  font-size: 15px; text-align: center; outline: none; box-sizing: border-box;
-  font-family: var(--font-serif); transition: border-color 0.2s;
+  width: 100%; padding: 14px 18px; border: 1px solid var(--border);
+  border-radius: 14px; font-size: 16px; text-align: center;
+  outline: none; box-sizing: border-box;
+  font-family: var(--font-sans);
+  background: rgba(0,0,0,0.02);
+  transition: border-color 0.25s var(--spring), box-shadow 0.25s var(--spring);
 }
-.email-input:focus { border-color: var(--accent); }
-.email-buttons { margin-top: 16px; display: flex; gap: 12px; justify-content: center; }
-.btn-secondary { background: var(--bg-page); color: var(--text-whisper); border: 1px solid var(--border); padding: 10px 20px; border-radius: 10px; cursor: pointer; font-size: 14px; }
-.btn-primary { background: var(--accent); color: #fff; border: none; padding: 10px 24px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; }
-.email-tip { font-size: 12px; color: var(--text-whisper); margin-top: 12px; }
+.email-input:focus {
+  border-color: var(--warm);
+  box-shadow: 0 0 0 4px rgba(196,122,74,0.1);
+}
+.email-buttons { margin-top: 20px; display: flex; gap: 12px; justify-content: center; }
+.btn-secondary { background: rgba(0,0,0,0.03); color: var(--text); border: 1px solid var(--border); padding: 12px 22px; border-radius: 24px; cursor: pointer; font-size: 14px; font-family: var(--font-sans); transition: all 0.25s var(--spring); }
+.btn-primary { background: var(--warm); color: #fff; border: none; padding: 12px 28px; border-radius: 24px; cursor: pointer; font-size: 14px; font-weight: 500; font-family: var(--font-sans); box-shadow: 0 2px 8px rgba(196,122,74,0.2); transition: all 0.3s var(--spring); }
+.email-tip { font-size: 13px; color: var(--text-whisper); margin-top: 16px; }
 .shake { animation: shake 0.3s ease-in-out; }
 @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 50%{transform:translateX(6px)} 75%{transform:translateX(-4px)} }
+
+/* 字数提示 */
+.length-hint { font-size: 13px; color: var(--text-subtle); margin-bottom: 16px; }
+.length-hint .low-signal { color: var(--warm); }
 </style>
 </head>
 <body>
@@ -397,19 +532,7 @@ body {
 <div id="app" class="page"></div>
 
 <!-- ===== 底部 ===== -->
-<footer class="footer" id="page-footer" style="display:none;">
-  <p>通信在你自己的邮箱中进行。fata 只是一个引介工具——不存储、不查看、不参与你们的对话。</p>
-  <p>
-    <a href="https://github.com/gsailing19/fata" target="_blank">GitHub 开源</a>
-    &nbsp;·&nbsp;
-    <a href="https://afdian.net/a/fata" target="_blank">爱发电</a>
-    &nbsp;·&nbsp;
-    <a href="https://github.com/gsailing19/fata/issues/new?template=feedback.yml" target="_blank">反馈与帮助</a>
-  </p>
-  <p class="footer-resources">
-    需要找人聊聊？心理援助热线 010-82951332 · 生命热线 400-161-9995 · 24小时 · 免费 · 匿名
-  </p>
-</footer>
+<footer class="footer" id="page-footer" style="display:none;"></footer>
 
 <!-- ===== 模块脚本 ===== -->
 <script type="module">
@@ -424,6 +547,294 @@ body {
   import { LowSignalGuide } from './modules/low-signal-guide.js';
   import { ResendRetry } from './modules/resend-retry.js';
   import { MatchEngine } from './modules/match-engine.js';
+
+  // ===== i18n 国际化 =====
+  const I18N = {
+    zh: {
+      'app.title': 'fata — 找到文字频率最接近的陌生人',
+      'app.tagline': '写一段话，找到文字频率最接近的陌生人',
+      'app.ogTitle': 'fata — 找到文字频率最接近的陌生人',
+      'app.ogDesc': '写一段话，浏览器里的 AI 会找到此刻文字频率最接近的陌生人。通信在你自己的邮箱里进行。',
+
+      'landing.placeholder': '今天在想什么？',
+      'landing.prompt1': '今天发生了一件让我...',
+      'landing.prompt2': '最近一直在想一个问题...',
+      'landing.prompt3': '如果有一个人能理解我...',
+      'landing.prompt4': '随便写点什么，不急',
+      'landing.showText': '匹配成功后向对方展示我的文字片段',
+      'landing.allowSnippet': '允许匿名展示我的文字片段（用于写作启发）',
+      'landing.deepMatch': '深度匹配（AI 辅助，更精准）',
+      'landing.fastMatch': '快速匹配（纯本地，更快）',
+      'landing.deliver': '投递',
+      'landing.interviewLink': '不知道写什么？让 AI 帮你整理',
+
+      'loading.preparing': '正在准备文字引擎...',
+
+      'returning.wrote': '你之前写过',
+      'returning.texts': '段文字。',
+      'returning.matched': '段找到了人，',
+      'returning.pending': '段还在等待。',
+      'returning.newText': '写一段新的',
+
+      'waiting.feeling': '正在感受你的文字...',
+      'waiting.comparing': '正在将你的频率和池子里的文字进行对比...',
+
+      'match.resonanceFallback': '你们在此刻的频率很接近。',
+      'match.icebreaker1': '你当时在想什么？',
+      'match.icebreaker2': '让TA推荐一首歌给你吧。',
+      'match.icebreaker3': '告诉TA你那天的感受。',
+      'match.otherWrote': 'TA 写下了——',
+      'match.emailLabel': 'TA 的邮箱',
+      'match.icebreakerLabel': '不知道怎么下笔？试试——',
+      'match.writeToTA': '写信给 TA',
+      'match.copyEmail': '复制邮箱',
+      'match.writeAgain': '再写一封',
+      'match.emailSubject': '关于那件事——来自 fata 的引介',
+      'match.emailBody': '嘿。\n\nfata 说我们的文字频率很接近。\n\n',
+
+      'nomatch.main': '你的文字在这里了。',
+      'nomatch.sub': '有人读懂了，就会来信。这可能需要一点时间。',
+      'nomatch.echoHint': '一段与你频率相近的话。也许你们会在下一次遇见。',
+      'nomatch.share': '分享 fata 给朋友',
+      'nomatch.retry': '你的文字将在 3 天后自动重新进入匹配池，寻找更接近的人。',
+      'nomatch.shareTitle': 'fata — 找到文字频率最接近的陌生人',
+
+      'interview.q1': '你今天打开 fata，最想有人跟你聊什么？',
+      'interview.q2': '这种感觉是从什么时候开始的？',
+      'interview.q3': '有没有哪一刻让你觉得特别明显？',
+      'interview.q4': '如果有一个平行世界的你做了不同的选择，你觉得那个你会对现在的你说什么？',
+      'interview.q5': '最后一个问题——如果有一个人，听完你说的这些话，什么都不说，只是点点头——你觉得怎么样？',
+      'interview.placeholder': '写点什么...',
+      'interview.skipHint': '可以说"跳过"或"不知道"——没关系。',
+      'interview.composing': '正在根据你的回答整理文字...',
+      'interview.composed': '我根据你说的帮你整理了一段文字。可以直接投递，也可以改一改。',
+      'interview.deliver': '投递这段文字',
+      'interview.edit': '自己改一下',
+
+      'email.title': '你的邮箱',
+      'email.privacyNote': 'fata 不会看到你的邮箱——它在你浏览器里加密后存入匹配池。<br>只有匹配成功时，双方各自收到对方邮箱。<br>',
+      'email.verifyLink': '审查源码验证这条承诺。',
+      'email.placeholder': 'example@qq.com',
+      'email.cancel': '以后再说',
+      'email.confirm': '确认',
+      'email.tip': '推荐用 QQ 邮箱或 Outlook，无需任何配置',
+
+      'snippets.label': '最近有人在写——',
+      'snippet.default1': '今天下班看到一只猫在雨里躲，想给它撑伞但...',
+      'snippet.default2': '失眠第三天。开始怀疑是不是床的问题而不是我的问题。',
+      'snippet.default3': '很久没联系的朋友突然发了条消息。我没回。不知道回什么。',
+      'echo.fallback': '最近在学吉他。手指磨破了但很开心。不知道为什么突然想做一件没有用的事。',
+
+      'browserGuide.title': '建议在系统浏览器中打开 fata<br>以获得完整体验',
+      'browserGuide.hint': '点击右上角 ··· → 在浏览器中打开',
+      'browserGuide.continue': '继续在微信中浏览（功能受限）',
+
+      'status.pending': '等待中',
+      'status.matched': '已匹配',
+      'status.expired': '已过期',
+
+      'footer.privacy': '通信在你自己的邮箱中进行。fata 只是一个引介工具——不存储、不查看、不参与你们的对话。',
+      'footer.github': 'GitHub 开源',
+      'footer.afdian': '爱发电',
+      'footer.feedback': '反馈与帮助',
+      'footer.crisis': '需要找人聊聊？心理援助热线 010-82951332 · 生命热线 400-161-9995 · 24小时 · 免费 · 匿名',
+      'footer.langSwitch': 'English',
+
+      'init.error': 'fata 正在准备中……如果长时间没有响应，请刷新页面。',
+
+      'signal.tooShort': '再写一点，AI 能更懂你',
+      'signal.forceTitle': '确定就这样投递吗？',
+      'signal.keepWriting': '再写一些',
+      'signal.sendAnyway': '就这样投递',
+
+      'model.loadingAI': '正在加载 AI 引擎...',
+      'model.downloading': '正在下载 AI 模型',
+      'model.fallback': 'AI 模型加载失败，使用快速匹配模式',
+      'model.statusAnalyzing': '正在深度分析你的文字...',
+      'model.statusFastMatching': '正在为你快速匹配...',
+
+      'fallback.notice': 'AI 模型暂时不可用，已切换到快速匹配模式',
+      'fallback.busy': '深度分析暂时繁忙。已为你切换到快速匹配——匹配精度不受影响。',
+      'fallback.switchBtn': '切换到快速匹配模式（不需要等待 AI 分析）',
+      'fallback.switched': '已为你切换到快速匹配。匹配精度不受影响。',
+
+      'lowSignal.guideTitle': '你的文字很短，AI 可能没法帮你找到合适的人。',
+      'lowSignal.guideHint': '随便写什么都可以——你在想什么、今天发生了什么、窗外是什么颜色。',
+      'lowSignal.sayMore': '多说一点',
+      'lowSignal.sendAnyway': '就这样投递',
+      'lowSignal.saveDraft': '存为草稿，下次再写',
+      'lowSignal.forceConfirmTitle': '确定就这样投递吗？',
+      'lowSignal.forceConfirmHint': '文字越丰富，越容易找到对的人。但一段话也很好。',
+      'lowSignal.keepWriting': '我再写一点',
+      'lowSignal.forceSend': '确定投递',
+
+      'safety.rejected': 'fata 是一个让人互相理解的地方。你的文字目前不适合这里的匹配池。如果你有不同的想法，一个小时后可以再试。',
+      'safety.rejectedTitle': 'fata 是一个让人互相理解的地方。',
+      'safety.rejectedMsg': '你的文字目前不适合这里的匹配池。如果你有不同的想法，{minutes} 分钟后可以再试。',
+      'safety.rejectedFooter': '这不是惩罚。fata 不做惩罚。只是你的这段文字暂时不适合遇到陌生人。',
+      'safety.supportTitle': '你写的文字在这里，加密的，只有你能看到。',
+      'safety.supportSubtitle': '无论你现在在想什么，有一些人24小时在电话那头。他们不会评判你，只是听。',
+      'safety.supportMore': '你还可以——',
+      'safety.supportNewText': '写一段新的文字',
+      'safety.supportHistory': '看看你之前写过的',
+      'safety.supportFooter': 'fata 不会标记你、不会限制你、不会让你等不到匹配。无论什么时候，你都值得被听到。',
+      'safety.hotline1Name': '北京心理援助热线（24小时）',
+      'safety.hotline2Name': '生命热线（24小时）',
+    },
+    en: {
+      'app.title': 'fata — Find the stranger whose frequency matches yours',
+      'app.tagline': 'Write a few lines. Find the stranger whose frequency matches yours.',
+      'app.ogTitle': 'fata — Find the stranger whose frequency matches yours',
+      'app.ogDesc': 'Write a few lines. AI in your browser finds the stranger whose emotional frequency matches yours. Communication happens in your own email.',
+
+      'landing.placeholder': 'What\'s on your mind today?',
+      'landing.prompt1': 'Today something happened that made me...',
+      'landing.prompt2': 'I\'ve been thinking about this one thing...',
+      'landing.prompt3': 'If someone could truly understand me...',
+      'landing.prompt4': 'Just write whatever, no rush',
+      'landing.showText': 'Show my text to my match',
+      'landing.allowSnippet': 'Allow anonymous display of my text (as writing inspiration)',
+      'landing.deepMatch': 'Deep match (AI assisted, more accurate)',
+      'landing.fastMatch': 'Fast match (fully local, faster)',
+      'landing.deliver': 'Send',
+      'landing.interviewLink': 'Not sure what to write? Let AI help',
+
+      'loading.preparing': 'Preparing the word engine...',
+
+      'returning.wrote': 'You\'ve written',
+      'returning.texts': 'pieces.',
+      'returning.matched': 'found someone,',
+      'returning.pending': 'still waiting.',
+      'returning.newText': 'Write something new',
+
+      'waiting.feeling': 'Feeling your words...',
+      'waiting.comparing': 'Comparing your frequency with the pool...',
+
+      'match.resonanceFallback': 'Your frequencies are close right now.',
+      'match.icebreaker1': 'What were you thinking about?',
+      'match.icebreaker2': 'Ask them to recommend a song.',
+      'match.icebreaker3': 'Tell them how you felt that day.',
+      'match.otherWrote': 'They wrote —',
+      'match.emailLabel': 'Their email',
+      'match.icebreakerLabel': 'Not sure how to start? Try —',
+      'match.writeToTA': 'Write to them',
+      'match.copyEmail': 'Copy email',
+      'match.writeAgain': 'Write another',
+      'match.emailSubject': 'About that thing — introduced by fata',
+      'match.emailBody': 'Hey.\n\nfata says our word frequencies are close.\n\n',
+
+      'nomatch.main': 'Your words are here now.',
+      'nomatch.sub': 'When someone reads and understands, they\'ll write. It might take a little time.',
+      'nomatch.echoHint': 'A piece close to your frequency. Maybe you\'ll meet next time.',
+      'nomatch.share': 'Share fata with a friend',
+      'nomatch.retry': 'Your words will re-enter the matching pool in 3 days to find someone closer.',
+      'nomatch.shareTitle': 'fata — Find the stranger whose frequency matches yours',
+
+      'interview.q1': 'What do you most want someone to talk with you about today?',
+      'interview.q2': 'When did this feeling start?',
+      'interview.q3': 'Was there a moment when it felt especially clear?',
+      'interview.q4': 'If a parallel-universe you had made different choices, what would they say to you now?',
+      'interview.q5': 'Last question — If someone heard all of this and just nodded, saying nothing — how would that feel?',
+      'interview.placeholder': 'Write something...',
+      'interview.skipHint': 'You can say "skip" or "I don\'t know" — that\'s fine.',
+      'interview.composing': 'Putting together your words...',
+      'interview.composed': 'I wrote something based on what you said. You can send it as-is or edit it.',
+      'interview.deliver': 'Send this',
+      'interview.edit': 'Edit it myself',
+
+      'email.title': 'Your email',
+      'email.privacyNote': 'fata cannot see your email — it\'s encrypted in your browser before entering the pool.<br>Only when a match happens do both sides receive each other\'s email.<br>',
+      'email.verifyLink': 'Audit the source code to verify this promise.',
+      'email.placeholder': 'example@gmail.com',
+      'email.cancel': 'Later',
+      'email.confirm': 'Confirm',
+      'email.tip': 'Gmail or Outlook recommended — no setup needed',
+
+      'snippets.label': 'People have been writing —',
+      'snippet.default1': 'Saw a cat hiding from rain after work today. Wanted to share my umbrella but...',
+      'snippet.default2': 'Third night of insomnia. Starting to wonder if it\'s the bed, not me.',
+      'snippet.default3': 'An old friend messaged out of nowhere. I didn\'t reply. Didn\'t know what to say.',
+      'echo.fallback': 'Learning guitar lately. Fingers are raw but happy. Not sure why I suddenly wanted to do something useless.',
+
+      'browserGuide.title': 'Open fata in your system browser<br>for the full experience',
+      'browserGuide.hint': 'Tap the top-right ··· → Open in Browser',
+      'browserGuide.continue': 'Continue in WeChat (limited features)',
+
+      'status.pending': 'Waiting',
+      'status.matched': 'Matched',
+      'status.expired': 'Expired',
+
+      'footer.privacy': 'Communication happens in your own email. fata is only an introduction tool — it doesn\'t store, view, or participate in your conversations.',
+      'footer.github': 'GitHub',
+      'footer.afdian': 'Support',
+      'footer.feedback': 'Feedback & Help',
+      'footer.crisis': 'Need to talk? Crisis Lifeline (China) 010-82951332 · Lifeline 400-161-9995 · 24/7 · Free · Anonymous',
+      'footer.langSwitch': '中文',
+
+      'init.error': 'fata is getting ready... If nothing happens for a while, please refresh the page.',
+
+      'signal.tooShort': 'Write a little more, AI will understand you better',
+      'signal.forceTitle': 'Send as-is?',
+      'signal.keepWriting': 'Keep writing',
+      'signal.sendAnyway': 'Send anyway',
+
+      'model.loadingAI': 'Loading AI engine...',
+      'model.downloading': 'Downloading AI model',
+      'model.fallback': 'AI model failed to load, using fast match mode',
+      'model.statusAnalyzing': 'Deep-analyzing your words...',
+      'model.statusFastMatching': 'Fast-matching for you...',
+
+      'fallback.notice': 'AI model temporarily unavailable, switched to fast match mode',
+      'fallback.busy': 'Deep analysis is busy. Switched to fast match — accuracy unaffected.',
+      'fallback.switchBtn': 'Switch to fast match (no AI analysis needed)',
+      'fallback.switched': 'Switched to fast match. Accuracy unaffected.',
+
+      'lowSignal.guideTitle': 'Your text is quite short — AI may not be able to find the right person.',
+      'lowSignal.guideHint': 'Write anything — what you\'re thinking, what happened today, the color outside your window.',
+      'lowSignal.sayMore': 'Write more',
+      'lowSignal.sendAnyway': 'Send as-is',
+      'lowSignal.saveDraft': 'Save as draft, continue later',
+      'lowSignal.forceConfirmTitle': 'Send this as-is?',
+      'lowSignal.forceConfirmHint': 'More words help find the right person. But a short piece works too.',
+      'lowSignal.keepWriting': 'Keep writing',
+      'lowSignal.forceSend': 'Send',
+
+      'safety.rejected': 'fata is a place for mutual understanding. Your words aren\'t suitable for the matching pool right now. If you feel differently, try again in an hour.',
+      'safety.rejectedTitle': 'fata is a place for mutual understanding.',
+      'safety.rejectedMsg': 'Your words aren\'t suitable for the matching pool right now. If you feel differently, try again in {minutes} minutes.',
+      'safety.rejectedFooter': 'This isn\'t a punishment. fata doesn\'t do punishment. This particular piece just isn\'t right for meeting a stranger right now.',
+      'safety.supportTitle': 'Your words are here, encrypted. Only you can see them.',
+      'safety.supportSubtitle': 'Whatever is on your mind — there are people on the other end of the line, 24 hours a day. They won\'t judge. They\'ll just listen.',
+      'safety.supportMore': 'You can also —',
+      'safety.supportNewText': 'Write something new',
+      'safety.supportHistory': 'See what you\'ve written before',
+      'safety.supportFooter': 'fata won\'t flag you, limit you, or leave you waiting forever. Whenever it is, you deserve to be heard.',
+      'safety.hotline1Name': 'Beijing Mental Health Hotline (24h)',
+      'safety.hotline2Name': 'Lifeline (24h)',
+    }
+  };
+
+  let currentLang = localStorage.getItem('fata_lang') ||
+    (navigator.language.startsWith('en') ? 'en' : 'zh');
+  if (!['zh','en'].includes(currentLang)) currentLang = 'zh';
+
+  function t(key) { return I18N[currentLang]?.[key] || I18N.zh[key] || key; }
+  window.t = t;
+
+  function setLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('fata_lang', lang);
+    document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+    // Update OG tags
+    document.title = t('app.title');
+    document.querySelector('meta[property="og:title"]')?.setAttribute('content', t('app.ogTitle'));
+    document.querySelector('meta[property="og:description"]')?.setAttribute('content', t('app.ogDesc'));
+    location.reload();
+  }
+  window.setLanguage = setLanguage;
+
+  // Set initial lang attribute
+  document.documentElement.lang = currentLang === 'en' ? 'en' : 'zh-CN';
 
   // ===== 全局状态 =====
   const state = {
@@ -510,16 +921,39 @@ body {
   function renderModelLoading() {
     document.getElementById('app').innerHTML = `
       <div class="model-loading">
-        <p class="waiting-text">正在准备文字引擎...</p>
+        <p class="waiting-text">${t('loading.preparing')}</p>
         <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
         <p class="waiting-sub progress-text"></p>
       </div>
     `;
   }
 
+  function renderFooter() {
+    const footer = document.getElementById('page-footer');
+    footer.innerHTML = `
+      <p>${t('footer.privacy')}</p>
+      <p>
+        <a href="https://github.com/gsailing19/fata" target="_blank">${t('footer.github')}</a>
+        &nbsp;·&nbsp;
+        <a href="https://afdian.net/a/fata" target="_blank">${t('footer.afdian')}</a>
+        &nbsp;·&nbsp;
+        <a href="https://github.com/gsailing19/fata/issues/new?template=feedback.yml" target="_blank">${t('footer.feedback')}</a>
+      </p>
+      <p class="footer-resources">${t('footer.crisis')}</p>
+      <p style="margin-top:12px;font-size:11px;">
+        <a href="#" onclick="window.setLanguage('${currentLang === 'zh' ? 'en' : 'zh'}');return false;">${t('footer.langSwitch')}</a>
+      </p>
+    `;
+  }
+
   function renderHome() {
     const app = document.getElementById('app');
     document.getElementById('page-footer').style.display = 'block';
+    renderFooter();
+    // Update title & meta
+    document.title = t('app.title');
+    document.querySelector('meta[property="og:title"]')?.setAttribute('content', t('app.ogTitle'));
+    document.querySelector('meta[property="og:description"]')?.setAttribute('content', t('app.ogDesc'));
 
     if (state.isReturningUser) {
       renderReturningHome(app);
@@ -529,21 +963,34 @@ body {
   }
 
   function renderLanding(app) {
+    const prompts = [
+      { key: 'landing.prompt1', text: t('landing.prompt1') },
+      { key: 'landing.prompt2', text: t('landing.prompt2') },
+      { key: 'landing.prompt3', text: t('landing.prompt3') },
+      { key: 'landing.prompt4', text: t('landing.prompt4') },
+    ];
     app.innerHTML = `
       <div class="landing">
-        <h1 class="landing-title">写一段话，找到文字频率最接近的陌生人</h1>
+        <h1 class="landing-title">${t('app.tagline')}</h1>
+
+        <div class="landing-wave-line">
+          <svg viewBox="0 0 120 24" width="120" height="24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 4 12 Q 16 2, 28 10 T 52 10 T 76 10 T 100 10 T 116 14"
+                  fill="none" stroke="#2a2a2a" stroke-width="0.6" stroke-linecap="round" opacity="0.35"/>
+            <path d="M 6 12 Q 18 4, 30 11 T 52 11 T 76 11 T 98 11 T 114 14"
+                  fill="none" stroke="#c47a4a" stroke-width="0.4" stroke-linecap="round" opacity="0.3"/>
+            <circle cx="60" cy="10" r="1.5" fill="#c47a4a" opacity="0.6"/>
+          </svg>
+        </div>
 
         <div class="landing-editor">
-          <textarea id="user-text" placeholder="今天在想什么？"></textarea>
+          <textarea id="user-text" placeholder="${t('landing.placeholder')}"></textarea>
         </div>
 
         <div class="length-hint" id="length-hint"></div>
 
         <div class="writing-prompts" id="writing-prompts">
-          <button class="writing-prompt" data-text="今天发生了一件让我...">今天发生了一件让我...</button>
-          <button class="writing-prompt" data-text="最近一直在想一个问题...">最近一直在想一个问题...</button>
-          <button class="writing-prompt" data-text="如果有一个人能理解我...">如果有一个人能理解我...</button>
-          <button class="writing-prompt" data-text="随便写点什么，不急">随便写点什么，不急</button>
+          ${prompts.map(p => `<button class="writing-prompt" data-text="${p.text}">${p.text}</button>`).join('')}
         </div>
 
         <div class="snippet-scroll" id="snippet-scroll"></div>
@@ -551,23 +998,25 @@ body {
         <div class="privacy-options">
           <label>
             <input type="checkbox" id="show-text-check" checked>
-            匹配成功后向对方展示我的文字片段
+            ${t('landing.showText')}
           </label>
           <label>
             <input type="checkbox" id="allow-snippet-check" checked>
-            允许匿名展示我的文字片段（用于写作启发）
+            ${t('landing.allowSnippet')}
           </label>
         </div>
 
         <div class="match-mode-selector">
-          <button class="match-mode-btn active" data-mode="deep">深度匹配（AI 辅助，更精准）</button>
-          <button class="match-mode-btn" data-mode="fast">快速匹配（纯本地，更快）</button>
+          <button class="match-mode-btn active" data-mode="deep">${t('landing.deepMatch')}</button>
+          <button class="match-mode-btn" data-mode="fast">${t('landing.fastMatch')}</button>
         </div>
 
-        <button class="btn-deliver" id="btn-deliver">投递</button>
+        <button class="btn-deliver" id="btn-deliver">${t('landing.deliver')}</button>
+
+        <div style="width:200px;height:1px;background:linear-gradient(to right,transparent,rgba(196,122,74,0.25),transparent);margin:24px auto 0;"></div>
 
         <p style="margin-top:16px;font-size:13px;color:var(--text-whisper);">
-          <a href="#" id="interview-link" style="color:var(--text-subtle);">不知道写什么？让 AI 帮你整理</a>
+          <a href="#" id="interview-link" style="color:var(--text-subtle);">${t('landing.interviewLink')}</a>
         </p>
       </div>
     `;
@@ -594,13 +1043,13 @@ body {
     app.innerHTML = `
       <div class="returning-home">
         <p class="returning-summary">
-          你之前写过 <strong>${state.pendingTexts.length}</strong> 段文字。
-          有 <strong>${matched}</strong> 段找到了人，
-          <strong>${active}</strong> 段还在等待。
+          ${t('returning.wrote')} <strong>${state.pendingTexts.length}</strong> ${t('returning.texts')}
+          ${t('returning.matched')} <strong>${matched}</strong> ${t('returning.pending')}
+          <strong>${active}</strong> ${currentLang === 'en' ? '' : ''}
         </p>
 
         <button class="btn-deliver" id="btn-new-text" style="margin-bottom:32px;">
-          写一段新的
+          ${t('returning.newText')}
         </button>
 
         <div class="text-history">${historyHTML}</div>
@@ -823,8 +1272,8 @@ body {
       text_b: textB
     }, HMAC_KEY_RAW);
     return result || {
-      resonance: '你们在此刻的频率很接近。',
-      questions: ['你当时在想什么？', '让TA推荐一首歌给你吧。', '告诉TA你那天的感受。']
+      resonance: t('match.resonanceFallback'),
+      questions: [t('match.icebreaker1'), t('match.icebreaker2'), t('match.icebreaker3')]
     };
   }
 
@@ -857,35 +1306,64 @@ body {
 
     document.getElementById('app').innerHTML = `
       <div class="match-result">
+        <div class="resonance-rings">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="38" cy="38" r="6" fill="none" stroke="#2a2a2a" stroke-width="0.8"/>
+            <circle cx="38" cy="38" r="14" fill="none" stroke="#2a2a2a" stroke-width="0.4" opacity="0.3"/>
+            <circle cx="38" cy="38" r="22" fill="none" stroke="#2a2a2a" stroke-width="0.25" opacity="0.15"/>
+            <circle cx="62" cy="62" r="6" fill="none" stroke="#2a2a2a" stroke-width="0.8"/>
+            <circle cx="62" cy="62" r="14" fill="none" stroke="#2a2a2a" stroke-width="0.4" opacity="0.3"/>
+            <circle cx="62" cy="62" r="22" fill="none" stroke="#2a2a2a" stroke-width="0.25" opacity="0.15"/>
+            <circle cx="50" cy="50" r="3" fill="#c47a4a"/>
+            <circle cx="50" cy="50" r="10" fill="none" stroke="#c47a4a" stroke-width="0.3" opacity="0.4">
+              <animate attributeName="r" values="8;12;8" dur="3s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.3;0.5;0.3" dur="3s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="50" cy="50" r="25" fill="none" stroke="#c47a4a" stroke-width="0.2" opacity="0.15">
+              <animate attributeName="r" values="22;28;22" dur="4s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.1;0.2;0.1" dur="4s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="38" cy="38" r="2" fill="#2a2a2a"/>
+            <circle cx="62" cy="62" r="2" fill="#2a2a2a"/>
+            <line x1="38" y1="38" x2="62" y2="62" stroke="#c47a4a" stroke-width="0.4" opacity="0.35" stroke-dasharray="1.5 3"/>
+          </svg>
+        </div>
         <div class="resonance-block">${resonance.resonance}</div>
 
         ${showOtherText ? `
         <div class="other-text-block">
-          <div class="other-text-label">TA 写下了——</div>
+          <div class="other-text-label">${t('match.otherWrote')}</div>
           <div class="other-text-content">"${escapeHTML(matchInfo.otherText)}"</div>
         </div>` : ''}
 
         <div class="email-block">
-          <div class="email-label">TA 的邮箱</div>
+          <div class="email-label">${t('match.emailLabel')}</div>
           <div class="email-address">${matchInfo.otherEmail}</div>
+        </div>
+
+        <div class="wave-sep">
+          <svg viewBox="0 0 80 16" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 4 8 Q 12 2, 20 8 T 36 8 T 52 8 T 68 8 T 76 10"
+                  fill="none" stroke="#c47a4a" stroke-width="0.5" stroke-linecap="round" opacity="0.4"/>
+          </svg>
         </div>
 
         ${icebreakersHTML ? `
         <div class="icebreakers">
-          <div class="icebreaker-label">不知道怎么下笔？试试——</div>
+          <div class="icebreaker-label">${t('match.icebreakerLabel')}</div>
           ${icebreakersHTML}
         </div>` : ''}
 
         <div class="actions-row">
           <a class="btn-email"
-             href="mailto:${matchInfo.otherEmail}?subject=关于那件事——来自 fata 的引介&body=嘿。%0A%0Afata 说我们的文字频率很接近。%0A%0A${encodeURIComponent(resonance.resonance)}%0A%0A">
-            写信给 TA
+             href="mailto:${matchInfo.otherEmail}?subject=${encodeURIComponent(t('match.emailSubject'))}&body=${encodeURIComponent(t('match.emailBody') + resonance.resonance + '\n\n')}">
+            ${t('match.writeToTA')}
           </a>
           <button class="btn-secondary" data-copy="${escapeHTML(matchInfo.otherEmail)}">
-            复制邮箱
+            ${t('match.copyEmail')}
           </button>
           <button class="btn-secondary" onclick="fata.renderHome()">
-            再写一封
+            ${t('match.writeAgain')}
           </button>
         </div>
       </div>
@@ -912,18 +1390,18 @@ body {
 
     document.getElementById('app').innerHTML = `
       <div class="no-match">
-        <p class="no-match-main">你的文字在这里了。</p>
-        <p class="no-match-sub">有人读懂了，就会来信。这可能需要一点时间。</p>
+        <p class="no-match-main">${t('nomatch.main')}</p>
+        <p class="no-match-sub">${t('nomatch.sub')}</p>
         <div class="echo-snippet">${echoHTML}</div>
         <p style="font-size:13px;color:var(--text-whisper);margin-bottom:24px;">
-          一段与你频率相近的话。也许你们会在下一次遇见。
+          ${t('nomatch.echoHint')}
         </p>
         <div class="actions-row">
-          <button class="btn-email" onclick="fata.renderHome()">再写一封</button>
-          <button class="btn-secondary" id="btn-share">分享 fata 给朋友</button>
+          <button class="btn-email" onclick="fata.renderHome()">${t('match.writeAgain')}</button>
+          <button class="btn-secondary" id="btn-share">${t('nomatch.share')}</button>
         </div>
         <p style="font-size:12px;color:var(--text-whisper);margin-top:16px;">
-          你的文字将在 3 天后自动重新进入匹配池，寻找更接近的人。
+          ${t('nomatch.retry')}
         </p>
       </div>
     `;
@@ -931,7 +1409,7 @@ body {
     if (navigator.share) {
       document.getElementById('btn-share').addEventListener('click', () => {
         navigator.share({
-          title: 'fata — 找到文字频率最接近的陌生人',
+          title: t('nomatch.shareTitle'),
           url: 'https://fata.uk'
         });
       });
@@ -964,15 +1442,15 @@ body {
     document.getElementById('app').innerHTML = `
       <div class="interview-container">
         <div class="interview-messages" id="interview-messages">
-          <div class="interview-msg ai">你今天打开 fata，最想有人跟你聊什么？</div>
+          <div class="interview-msg ai">${t('interview.q1')}</div>
         </div>
         <div class="interview-input-row">
           <input class="interview-input" id="interview-input"
-                 placeholder="写点什么..." autofocus>
+                 placeholder="${t('interview.placeholder')}" autofocus>
           <button class="interview-send" id="interview-send">→</button>
         </div>
         <p style="font-size:12px;color:var(--text-whisper);margin-top:12px;text-align:center;">
-          可以说"跳过"或"不知道"——没关系。
+          ${t('interview.skipHint')}
         </p>
       </div>
     `;
@@ -996,7 +1474,7 @@ body {
         // 禁用输入
         input.disabled = true;
         sendBtn.disabled = true;
-        messages.innerHTML += '<div class="interview-msg ai">正在根据你的回答整理文字...</div>';
+        messages.innerHTML += `<div class="interview-msg ai">${t('interview.composing')}</div>`;
 
         // 调用 LLM 生成匹配画像
         try {
@@ -1006,18 +1484,18 @@ body {
             text_a: allAnswers
           }, HMAC_KEY_RAW);
 
-          const profile = (result && result.profile) || '我最近在...';
+          const profile = (result && result.profile) || (currentLang === 'zh' ? '我最近在...' : 'Lately I\'ve been...');
           const profileHTML = escapeHTML(profile);
-          messages.innerHTML = messages.innerHTML.replace('正在根据你的回答整理文字...', '');
+          messages.innerHTML = messages.innerHTML.replace(t('interview.composing'), '');
           messages.innerHTML += `
             <div class="interview-msg ai">
-              我根据你说的帮你整理了一段文字。可以直接投递，也可以改一改。
+              ${t('interview.composed')}
               <br><br>
               <em>"${profileHTML}"</em>
             </div>
             <div class="actions-row" style="margin-top:16px;">
-              <button class="btn-primary" id="interview-deliver">投递这段文字</button>
-              <button class="btn-secondary" id="interview-edit">自己改一下</button>
+              <button class="btn-primary" id="interview-deliver">${t('interview.deliver')}</button>
+              <button class="btn-secondary" id="interview-edit">${t('interview.edit')}</button>
             </div>
           `;
           document.getElementById('interview-deliver').addEventListener('click', () => {
@@ -1042,7 +1520,7 @@ body {
           const fallbackProfile = answers.join('。');
           messages.innerHTML += `
             <div class="interview-msg ai">
-              我根据你说的帮你整理了一段文字。可以直接投递，也可以改一改。
+              ${t('interview.composed')}
               <br><br>
               <em>"${escapeHTML(fallbackProfile)}"</em>
             </div>
@@ -1079,14 +1557,14 @@ body {
     overlay.innerHTML = `
       <div class="browser-guide-box">
         <div class="arrow-icon">↗</div>
-        <p>建议在系统浏览器中打开 fata<br>以获得完整体验</p>
+        <p>${t('browserGuide.title')}</p>
         <p style="font-size:12px;color:var(--text-subtle);margin-top:12px;">
-          点击右上角 ··· → 在浏览器中打开
+          ${t('browserGuide.hint')}
         </p>
         <button style="margin-top:16px;padding:8px 20px;border:1px solid var(--border);
                        background:transparent;border-radius:16px;font-size:13px;cursor:pointer;"
                 onclick="this.parentElement.parentElement.remove()">
-          继续在微信中浏览（功能受限）
+          ${t('browserGuide.continue')}
         </button>
       </div>
     `;
@@ -1103,19 +1581,18 @@ body {
       overlay.className = 'email-modal-overlay';
       overlay.innerHTML = `
         <div class="email-modal">
-          <h3>你的邮箱</h3>
+          <h3>${t('email.title')}</h3>
           <p class="email-privacy-note">
-            fata 不会看到你的邮箱——它在你浏览器里加密后存入匹配池。<br>
-            只有匹配成功时，双方各自收到对方邮箱。<br>
-            <a href="/privacy.html" target="_blank">审查源码验证这条承诺。</a>
+            ${t('email.privacyNote')}
+            <a href="/privacy.html" target="_blank">${t('email.verifyLink')}</a>
           </p>
           <input type="email" id="email-input" class="email-input"
-                 placeholder="example@qq.com" autofocus>
+                 placeholder="${t('email.placeholder')}" autofocus>
           <div class="email-buttons">
-            <button class="btn-secondary" id="email-cancel">以后再说</button>
-            <button class="btn-primary" id="email-confirm">确认</button>
+            <button class="btn-secondary" id="email-cancel">${t('email.cancel')}</button>
+            <button class="btn-primary" id="email-confirm">${t('email.confirm')}</button>
           </div>
-          <p class="email-tip">推荐用 QQ 邮箱或 Outlook，无需任何配置</p>
+          <p class="email-tip">${t('email.tip')}</p>
         </div>
       `;
       document.body.appendChild(overlay);
@@ -1228,9 +1705,9 @@ body {
     }
 
     const defaults = [
-      '今天下班看到一只猫在雨里躲，想给它撑伞但...',
-      '失眠第三天。开始怀疑是不是床的问题而不是我的问题。',
-      '很久没联系的朋友突然发了条消息。我没回。不知道回什么。'
+      t('snippet.default1'),
+      t('snippet.default2'),
+      t('snippet.default3')
     ];
     renderSnippets(defaults);
   }
@@ -1239,7 +1716,7 @@ body {
     const container = document.getElementById('snippet-scroll');
     if (!container) return;
     container.innerHTML = `
-      <div class="snippet-label">最近有人在写——</div>
+      <div class="snippet-label">${t('snippets.label')}</div>
       ${snippets.map(s => `<div class="snippet-item">"${escapeHTML(s)}"</div>`).join('')}
     `;
   }
@@ -1274,16 +1751,11 @@ body {
         }
       }
     } catch (e) { /* ignore */ }
-    return '最近在学吉他。手指磨破了但很开心。不知道为什么突然想做一件没有用的事。';
+    return t('echo.fallback');
   }
 
   function getNextInterviewQuestion(userText, round) {
-    const questions = [
-      '这种感觉是从什么时候开始的？',
-      '有没有哪一刻让你觉得特别明显？',
-      '如果有一个平行世界的你做了不同的选择，你觉得那个你会对现在的你说什么？',
-      '最后一个问题——如果有一个人，听完你说的这些话，什么都不说，只是点点头——你觉得怎么样？'
-    ];
+    const questions = [t('interview.q2'), t('interview.q3'), t('interview.q4'), t('interview.q5')];
     return questions[Math.min(round - 2, questions.length - 1)];
   }
 
@@ -1293,7 +1765,7 @@ body {
   }
 
   function statusLabel(status) {
-    return { pending: '等待中', matched: '已匹配', expired: '已过期' }[status] || status;
+    return { pending: t('status.pending'), matched: t('status.matched'), expired: t('status.expired') }[status] || status;
   }
 
   async function sha256(message) {
@@ -1405,7 +1877,7 @@ body {
     console.error('fata init error:', err);
     document.getElementById('app').innerHTML = `
       <div style="text-align:center;padding-top:80px;">
-        <p>fata 正在准备中……如果长时间没有响应，请刷新页面。</p>
+        <p>${t('init.error')}</p>
       </div>
     `;
   });

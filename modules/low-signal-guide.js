@@ -62,24 +62,25 @@ const LowSignalGuide = {
    * 获取引导 UI HTML
    */
   getGuideHTML(text) {
+    const t = window.t || (k => k);
     return `
       <div class="signal-guide-container">
         <div class="signal-guide-icon">~</div>
         <p class="signal-guide-main">
-          你的文字很短，AI 可能没法帮你找到合适的人。
+          ${t('lowSignal.guideTitle')}
         </p>
         <p class="signal-guide-sub">
-          随便写什么都可以——你在想什么、今天发生了什么、窗外是什么颜色。
+          ${t('lowSignal.guideHint')}
         </p>
         <div class="signal-guide-actions">
           <button class="btn-primary" onclick="fata.ui.expandEditor('${this._escapeHTML(text)}')">
-            多说一点
+            ${t('lowSignal.sayMore')}
           </button>
           <button class="btn-ghost" onclick="fata.ui.forceSubmit()">
-            就这样投递
+            ${t('lowSignal.sendAnyway')}
           </button>
           <button class="btn-text" onclick="fata.ui.saveAsDraft()">
-            存为草稿，下次再写
+            ${t('lowSignal.saveDraft')}
           </button>
         </div>
         ${this._getRecentSnippetsHTML()}
@@ -92,12 +93,13 @@ const LowSignalGuide = {
    * 在编辑区下方微妙显示
    */
   getLengthHintHTML(textLength) {
+    const t = window.t || (k => k);
     if (textLength === 0) return '';
 
     if (textLength <= 20) {
       return `
         <p class="length-hint subtle-encourage">
-          再写一点，AI 能更懂你
+          ${t('lowSignal.guideTitle').split('。')[0]}
         </p>`;
     }
 
@@ -109,20 +111,21 @@ const LowSignalGuide = {
    * "就这样投递"二次确认
    */
   getForceConfirmHTML() {
+    const t = window.t || (k => k);
     return `
       <div class="force-confirm-container">
         <p class="force-confirm-main">
-          确定就这样投递吗？
+          ${t('lowSignal.forceConfirmTitle')}
         </p>
         <p class="force-confirm-sub">
-          文字越丰富，越容易找到对的人。但一段话也很好。
+          ${t('lowSignal.forceConfirmHint')}
         </p>
         <div class="force-confirm-actions">
           <button class="btn-primary" onclick="fata.ui.expandEditor()">
-            我再写一点
+            ${t('lowSignal.keepWriting')}
           </button>
           <button class="btn-ghost" onclick="fata.submit()">
-            确定投递
+            ${t('lowSignal.forceSend')}
           </button>
         </div>
       </div>

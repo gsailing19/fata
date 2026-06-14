@@ -22,7 +22,8 @@ const ModelLoader = {
    * @returns {Promise<Object>} — { mode: 'full'|'fallback', pipeline }
    */
   async initialize(onProgress) {
-    this._reportProgress(onProgress, 0, '正在加载 AI 引擎...');
+    const t = window.t || (k => k);
+    this._reportProgress(onProgress, 0, t('model.loadingAI'));
     this.state.status = 'loading';
 
     try {
@@ -39,12 +40,12 @@ const ModelLoader = {
             this._reportProgress(onProgress, pct,
               `正在下载模型... ${label} (${pct}%)`);
           } else if (info.status === 'ready') {
-            this._reportProgress(onProgress, 100, '模型就绪');
+            this._reportProgress(onProgress, 100, t('model.ready'));
           }
         }
       });
 
-      this._reportProgress(onProgress, 100, '模型就绪');
+      this._reportProgress(onProgress, 100, t('model.ready'));
       this.state.status = 'ready';
       this.state.progress = 100;
       return { mode: 'full', source: 'cache', pipeline: pipe };
@@ -57,8 +58,8 @@ const ModelLoader = {
   async _switchToFallback(onProgress) {
     this.state.status = 'fallback';
     this.state.fallbackMode = true;
-    this._reportProgress(onProgress, 100,
-      'AI 引擎暂时无法加载，已切换到基础匹配模式。完整体验可在 Wi-Fi 环境下打开 fata。');
+    const t = window.t || (k => k);
+    this._reportProgress(onProgress, 100, t('model.fallbackMsg'));
     this._waitForNetworkRecovery(onProgress);
     return { mode: 'fallback', source: 'tfidf' };
   },

@@ -17,12 +17,12 @@ const SafetyHandler = {
   // 心理援助资源（中文 + 国际）
   resources: [
     {
-      name: '北京心理援助热线（24小时）',
+      name: window.t ? window.t('safety.hotline1Name') : '北京心理援助热线（24小时）',
       phone: '010-82951332',
       region: 'cn'
     },
     {
-      name: '生命热线（24小时）',
+      name: window.t ? window.t('safety.hotline2Name') : '生命热线（24小时）',
       phone: '400-161-9995',
       region: 'cn'
     },
@@ -48,7 +48,7 @@ const SafetyHandler = {
         action: 'reject',
         shouldCreateIssue: false,
         cooldownSeconds: 3600, // 1 小时 session 冷却
-        message: 'fata 是一个让人互相理解的地方。你的文字目前不适合这里的匹配池。如果你有不同的想法，一个小时后可以再试。',
+        message: (window.t || (k => k))('safety.rejected'),
         uiState: 'rejected'
       };
     }
@@ -138,6 +138,7 @@ const SafetyHandler = {
    * - 不强制、不说教、不拯救
    */
   getSupportResourcesHTML(resources) {
+    const t = window.t || (k => k);
     const resourceItems = resources.map(r =>
       `<div class="resource-item">
         <span class="resource-name">${r.name}</span>
@@ -148,8 +149,8 @@ const SafetyHandler = {
     return `
       <div class="support-resources-container">
         <div class="support-greeting">
-          <p class="support-main-text">你写的文字在这里，加密的，只有你能看到。</p>
-          <p class="support-sub-text">无论你现在在想什么，有一些人24小时在电话那头。他们不会评判你，只是听。</p>
+          <p class="support-main-text">${t('safety.supportTitle')}</p>
+          <p class="support-sub-text">${t('safety.supportSubtitle')}</p>
         </div>
 
         <div class="support-resource-list">
@@ -159,18 +160,17 @@ const SafetyHandler = {
         <div class="support-divider"></div>
 
         <div class="support-alt-actions">
-          <p class="support-alt-text">你还可以——</p>
+          <p class="support-alt-text">${t('safety.supportMore')}</p>
           <button class="btn-alt" onclick="fata.ui.showWritePage()">
-            写一段新的文字
+            ${t('safety.supportNewText')}
           </button>
           <button class="btn-alt-ghost" onclick="fata.ui.showHistory()">
-            看看你之前写过的
+            ${t('safety.supportHistory')}
           </button>
         </div>
 
         <p class="support-footer-text">
-          fata 不会标记你、不会限制你、不会让你等不到匹配。
-          无论什么时候，你都值得被听到。
+          ${t('safety.supportFooter')}
         </p>
       </div>
     `;
@@ -181,18 +181,17 @@ const SafetyHandler = {
    * content_flag=hate/harassment 时展示
    */
   getRejectionHTML(cooldownMinutes) {
+    const t = window.t || (k => k);
     return `
       <div class="rejection-container">
         <p class="rejection-main-text">
-          fata 是一个让人互相理解的地方。
+          ${t('safety.rejectedTitle')}
         </p>
         <p class="rejection-sub-text">
-          你的文字目前不适合这里的匹配池。
-          如果你有不同的想法，${cooldownMinutes} 分钟后可以再试。
+          ${t('safety.rejectedMsg').replace('{minutes}', cooldownMinutes)}
         </p>
         <p class="rejection-footer-text">
-          这不是惩罚。fata 不做惩罚。
-          只是你的这段文字暂时不适合遇到陌生人。
+          ${t('safety.rejectedFooter')}
         </p>
       </div>
     `;
