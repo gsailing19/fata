@@ -12,6 +12,12 @@ English | [中文](README_ZH.md)
 
 You open a webpage, write a few lines. AI reads your words in the browser, finds another stranger whose frequency matches yours. Then you talk — using your **own email**.
 
+## What is fata
+
+fata is an open-source, serverless tool for meeting strangers through writing. AI runs entirely in your browser — it analyzes your text's emotional frequency, finds someone whose words resonate, and connects you. No sign-up. No database. No chat history. Communication happens in your own email.
+
+fata 是一个开源的无服务器陌生人匹配工具。写一段话，浏览器里的 AI 分析你的文字情绪频率，找到另一个与你共振的人。无需注册，没有数据库，没有聊天记录。通信在你自己的邮箱里进行。
+
 ---
 
 ## Why trust fata
