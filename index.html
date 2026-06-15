@@ -92,6 +92,8 @@ body {
   margin-bottom: 12px; line-height: 1.3;
   letter-spacing: -0.015em; text-wrap: balance;
 }
+.landing-logo { margin-bottom: 28px; opacity: 0.85; }
+.landing-logo svg { display: block; }
 .landing-wave-line {
   display: block; width: 120px; height: 24px;
   margin: 0 auto 48px; opacity: 0.45;
@@ -137,6 +139,17 @@ body {
   box-shadow: var(--shadow-card);
 }
 
+/* 采访入口 - 更醒目的位置 */
+.interview-prompt {
+  margin-bottom: 24px; text-align: center;
+}
+.interview-prompt a {
+  font-size: 14px; color: var(--warm); text-decoration: none;
+  border-bottom: 1px solid rgba(196,122,74,0.3);
+  padding-bottom: 2px; transition: all 0.2s;
+}
+.interview-prompt a:hover { border-bottom-color: var(--warm); opacity: 0.8; }
+
 /* 写作启发片段 */
 .snippet-scroll {
   margin-bottom: 36px; max-width: 480px; width: 100%;
@@ -161,7 +174,7 @@ body {
 
 /* 匹配模式选择 */
 .match-mode-selector {
-  display: flex; gap: 2px; justify-content: center; margin-bottom: 32px;
+  display: flex; gap: 2px; justify-content: center; margin-bottom: 0;
   background: rgba(0,0,0,0.04); padding: 4px; border-radius: 10px;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -175,6 +188,11 @@ body {
 .match-mode-btn.active {
   background: #fff; color: var(--text);
   box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+}
+.match-mode-desc {
+  font-size: 12px; color: var(--text-whisper);
+  text-align: center; margin-top: 6px; margin-bottom: 10px;
+  transition: opacity 0.2s;
 }
 
 /* 投递按钮 */
@@ -218,9 +236,19 @@ body {
   box-shadow: var(--shadow-card);
 }
 
-/* 采访入口链接 */
-#interview-link { transition: color 0.2s; }
-#interview-link:hover { color: var(--warm) !important; }
+/* 语言切换 - 右上角 */
+.lang-switch-top {
+  position: fixed; top: 24px; right: 24px; z-index: 100;
+}
+.lang-switch-top a {
+  font-size: 13px; color: var(--text-subtle); text-decoration: none;
+  padding: 6px 14px; border-radius: 20px;
+  background: rgba(255,255,255,0.6); backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+}
+.lang-switch-top a:hover { color: var(--warm); border-color: var(--warm); }
 
 /* ===== 等待界面 ===== */
 .waiting-container {
@@ -356,7 +384,13 @@ body {
 }
 
 /* ===== AI 采访模式 ===== */
-.interview-container { padding-top: 60px; max-width: 480px; margin: 0 auto; }
+.interview-container { padding-top: 40px; max-width: 480px; margin: 0 auto; }
+.interview-back { margin-bottom: 20px; }
+.interview-back a {
+  font-size: 14px; color: var(--text-subtle); text-decoration: none;
+  transition: color 0.2s;
+}
+.interview-back a:hover { color: var(--warm); }
 .interview-messages { margin-bottom: 28px; }
 .interview-msg {
   font-size: 15px; line-height: 1.7; margin-bottom: 16px; padding: 14px 18px;
@@ -453,7 +487,7 @@ body {
 
 /* ===== 底部 ===== */
 .footer {
-  max-width: var(--max-width); margin: 100px auto 0; padding: 28px 0;
+  max-width: var(--max-width); margin: 120px auto 0; padding: 32px 0 28px;
   border-top: 1px solid rgba(0,0,0,0.06); text-align: center;
   font-size: 12px; color: var(--text-whisper); line-height: 2;
   letter-spacing: 0.01em;
@@ -531,6 +565,11 @@ body {
 <!-- ===== 主容器 ===== -->
 <div id="app" class="page"></div>
 
+<!-- ===== 语言切换（右上角） ===== -->
+<div class="lang-switch-top" id="lang-switch-top" style="display:none;">
+  <a href="#" id="lang-switch-link" onclick="return false;"></a>
+</div>
+
 <!-- ===== 底部 ===== -->
 <footer class="footer" id="page-footer" style="display:none;"></footer>
 
@@ -561,10 +600,12 @@ body {
       'landing.prompt2': '最近一直在想一个问题...',
       'landing.prompt3': '如果有一个人能理解我...',
       'landing.prompt4': '随便写点什么，不急',
-      'landing.showText': '匹配成功后向对方展示我的文字片段',
-      'landing.allowSnippet': '允许匿名展示我的文字片段（用于写作启发）',
-      'landing.deepMatch': '深度匹配（AI 辅助，更精准）',
-      'landing.fastMatch': '快速匹配（纯本地，更快）',
+      'landing.showText': '匹配成功后向对方展示我的文字',
+      'landing.allowSnippet': '允许匿名展示我的文字片段',
+      'landing.deepMatch': '深度匹配',
+      'landing.fastMatch': '快速匹配',
+      'landing.deepMatchDesc': 'AI 深度理解你的文字情绪，匹配更精准',
+      'landing.fastMatchDesc': '纯本地计算，秒级匹配，无需等待',
       'landing.deliver': '投递',
       'landing.interviewLink': '不知道写什么？让 AI 帮你整理',
 
@@ -693,9 +734,11 @@ body {
       'landing.prompt3': 'If someone could truly understand me...',
       'landing.prompt4': 'Just write whatever, no rush',
       'landing.showText': 'Show my text to my match',
-      'landing.allowSnippet': 'Allow anonymous display of my text (as writing inspiration)',
-      'landing.deepMatch': 'Deep match (AI assisted, more accurate)',
-      'landing.fastMatch': 'Fast match (fully local, faster)',
+      'landing.allowSnippet': 'Allow anonymous display of my text',
+      'landing.deepMatch': 'Deep match',
+      'landing.fastMatch': 'Fast match',
+      'landing.deepMatchDesc': 'AI deeply understands your emotional tone for better accuracy',
+      'landing.fastMatchDesc': 'Fully local, instant matching, no waiting needed',
       'landing.deliver': 'Send',
       'landing.interviewLink': 'Not sure what to write? Let AI help',
 
@@ -847,7 +890,8 @@ body {
     modelStatus: 'idle',       // 'idle' | 'loading' | 'ready' | 'fallback'
     pendingTexts: [],          // 历史文字列表
     currentMatch: null,        // 当前匹配结果
-    draft: null               // 草稿
+    draft: null,              // 草稿
+    lastMatchAttempt: null     // { text, email, signalResult } 用于失败重试
   };
 
   // HMAC 密钥（浏览器端生成，与服务端 HMAC_KEY 相同）
@@ -921,7 +965,8 @@ body {
   function renderModelLoading() {
     document.getElementById('app').innerHTML = `
       <div class="model-loading">
-        <p class="waiting-text">${t('loading.preparing')}</p>
+        <p class="waiting-text">正在准备文字引擎...</p>
+        <p class="waiting-sub" style="font-size:12px;color:var(--text-whisper);">Preparing the word engine...</p>
         <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
         <p class="waiting-sub progress-text"></p>
       </div>
@@ -939,11 +984,13 @@ body {
         &nbsp;·&nbsp;
         <a href="https://github.com/gsailing19/fata/issues/new?template=feedback.yml" target="_blank">${t('footer.feedback')}</a>
       </p>
-      <p class="footer-resources">${t('footer.crisis')}</p>
-      <p style="margin-top:12px;font-size:11px;">
-        <a href="#" onclick="window.setLanguage('${currentLang === 'zh' ? 'en' : 'zh'}');return false;">${t('footer.langSwitch')}</a>
-      </p>
     `;
+    // 右上角语言切换
+    const sw = document.getElementById('lang-switch-top');
+    const link = document.getElementById('lang-switch-link');
+    sw.style.display = 'block';
+    link.textContent = currentLang === 'zh' ? 'English' : '中文';
+    link.onclick = () => { window.setLanguage(currentLang === 'zh' ? 'en' : 'zh'); };
   }
 
   function renderHome() {
@@ -971,6 +1018,29 @@ body {
     ];
     app.innerHTML = `
       <div class="landing">
+        <div class="landing-logo">
+          <svg viewBox="0 0 200 60" width="200" height="60" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 12 38 Q 32 18, 44 32 T 72 32 T 100 32 T 128 32 T 156 32 T 188 38"
+                  fill="none" stroke="#2a2a2a" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M 14 38 Q 34 20, 46 34 T 72 34 T 100 34 T 128 34 T 154 34 T 186 38"
+                  fill="none" stroke="#2a2a2a" stroke-width="0.5" opacity="0.25" stroke-linecap="round"/>
+            <path d="M 16 38 Q 36 22, 48 36 T 72 36 T 100 36 T 128 36 T 152 36 T 184 38"
+                  fill="none" stroke="#2a2a2a" stroke-width="0.3" opacity="0.12" stroke-linecap="round"/>
+            <text x="34" y="54" font-family="Georgia,serif" font-size="28" font-style="italic"
+                  fill="#2a2a2a" text-anchor="middle">f</text>
+            <text x="68" y="46" font-family="Georgia,serif" font-size="28" font-style="italic"
+                  fill="#2a2a2a" text-anchor="middle">a</text>
+            <text x="100" y="54" font-family="Georgia,serif" font-size="28" font-style="italic"
+                  fill="#2a2a2a" text-anchor="middle">t</text>
+            <text x="132" y="50" font-family="Georgia,serif" font-size="28" font-style="italic"
+                  fill="#2a2a2a" text-anchor="middle">a</text>
+            <circle cx="100" cy="32" r="2.2" fill="#c47a4a"/>
+            <circle cx="100" cy="32" r="8" fill="none" stroke="#c47a4a" stroke-width="0.3" opacity="0.3"/>
+            <circle cx="34" cy="48" r="1.4" fill="#c47a4a" opacity="0.5"/>
+            <circle cx="12" cy="38" r="1.2" fill="#2a2a2a"/>
+            <circle cx="188" cy="38" r="1.2" fill="#2a2a2a"/>
+          </svg>
+        </div>
         <h1 class="landing-title">${t('app.tagline')}</h1>
 
         <div class="landing-wave-line">
@@ -988,6 +1058,10 @@ body {
         </div>
 
         <div class="length-hint" id="length-hint"></div>
+
+        <div class="interview-prompt">
+          <a href="#" id="interview-link">${t('landing.interviewLink')}</a>
+        </div>
 
         <div class="writing-prompts" id="writing-prompts">
           ${prompts.map(p => `<button class="writing-prompt" data-text="${p.text}">${p.text}</button>`).join('')}
@@ -1011,13 +1085,11 @@ body {
           <button class="match-mode-btn" data-mode="fast">${t('landing.fastMatch')}</button>
         </div>
 
+        <p class="match-mode-desc" id="match-mode-desc">${t('landing.deepMatchDesc')}</p>
+
         <button class="btn-deliver" id="btn-deliver">${t('landing.deliver')}</button>
 
         <div style="width:200px;height:1px;background:linear-gradient(to right,transparent,rgba(196,122,74,0.25),transparent);margin:24px auto 0;"></div>
-
-        <p style="margin-top:16px;font-size:13px;color:var(--text-whisper);">
-          <a href="#" id="interview-link" style="color:var(--text-subtle);">${t('landing.interviewLink')}</a>
-        </p>
       </div>
     `;
 
@@ -1082,6 +1154,9 @@ body {
         document.querySelectorAll('.match-mode-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         state.matchMode = btn.dataset.mode;
+        const desc = document.getElementById('match-mode-desc');
+        if (desc) desc.textContent = btn.dataset.mode === 'deep'
+          ? t('landing.deepMatchDesc') : t('landing.fastMatchDesc');
       });
     });
 
@@ -1170,98 +1245,104 @@ body {
     }
 
     // Step 4: 执行匹配
+    state.lastMatchAttempt = { text, email, signalResult };
     await executeMatch(text, email, signalResult);
   }
 
   // ===== 匹配流程 =====
 
   async function executeMatch(text, email, signalResult) {
-    showWaiting('正在感受你的文字...');
+    try {
+      showWaiting('正在感受你的文字...');
 
-    // 意图解析（深度匹配模式）
-    let intentProfile = null;
-    if (state.matchMode === 'deep') {
-      const intentResult = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
-        prompt_type: 'intent_parse',
-        text_a: text
-      }, HMAC_KEY_RAW);
-      if (intentResult) {
-        intentProfile = intentResult;
+      // 意图解析（深度匹配模式）
+      let intentProfile = null;
+      if (state.matchMode === 'deep') {
+        const intentResult = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
+          prompt_type: 'intent_parse',
+          text_a: text
+        }, HMAC_KEY_RAW);
+        if (intentResult) {
+          intentProfile = intentResult;
+        }
       }
-    }
 
-    showWaiting('正在将你的频率和池子里的文字进行对比...');
+      showWaiting('正在将你的频率和池子里的文字进行对比...');
 
-    // 匹配
-    const matchResult = await MatchEngine.findMatch(
-      text,
-      await encryptEmail(email),
-      intentProfile,
-      state.matchMode
-    );
+      // 匹配
+      const matchResult = await MatchEngine.findMatch(
+        text,
+        await encryptEmail(email),
+        intentProfile,
+        state.matchMode
+      );
 
-    if (matchResult.matched) {
-      // 生成共鸣描述
-      const resonance = await generateResonance(text, matchResult.matchInfo.otherText);
-      // 保存匹配历史
-      await saveToIndexedDB('fata_history', {
-        id: Date.now(),
-        text: text,
-        snippet: text.slice(0, 80),
-        status: 'matched',
-        timestamp: Date.now(),
-        matchEmail: matchResult.matchInfo.otherEmail
-      });
-      state.pendingTexts.push({
-        id: Date.now().toString(),
-        text: text,
-        snippet: text.slice(0, 80),
-        status: 'matched',
-        timestamp: Date.now()
-      });
-      showMatchSuccess(matchResult, resonance, text);
+      if (matchResult.matched) {
+        // 生成共鸣描述
+        const resonance = await generateResonance(text, matchResult.matchInfo.otherText);
+        // 保存匹配历史
+        await saveToIndexedDB('fata_history', {
+          id: Date.now(),
+          text: text,
+          snippet: text.slice(0, 80),
+          status: 'matched',
+          timestamp: Date.now(),
+          matchEmail: matchResult.matchInfo.otherEmail
+        });
+        state.pendingTexts.push({
+          id: Date.now().toString(),
+          text: text,
+          snippet: text.slice(0, 80),
+          status: 'matched',
+          timestamp: Date.now()
+        });
+        showMatchSuccess(matchResult, resonance, text);
 
-      // 异步发送双方通知邮件（不阻塞 UI）
-      const emailHashB = await sha256(matchResult.matchInfo.otherEmail || '');
-      ResendRetry.sendWithRetry({
-        matchA: {
-          email,
-          ownTextSnippet: text.slice(0, 120),
-          showOwnText: state.showTextToMatch,
-          seeOtherText: matchResult.matchInfo.otherText ? true : false,
-          textSnippet: matchResult.matchInfo.otherText
-            ? matchResult.matchInfo.otherText.slice(0, 120) : ''
-        },
-        matchB: {
-          email: matchResult.matchInfo.otherEmail,
-          ownTextSnippet: matchResult.matchInfo.otherText
-            ? matchResult.matchInfo.otherText.slice(0, 120) : '',
-          showOwnText: true,
-          seeOtherText: state.showTextToMatch,
-          textSnippet: state.showTextToMatch ? text.slice(0, 120) : '',
-          emailHash: emailHashB
-        },
-        resonance: resonance.resonance,
-        icebreakers: resonance.questions
-      }, matchResult.matchIssueNumber).catch(e => {
-        console.warn('fata: Resend notification failed', e);
-      });
-    } else {
-      await saveToIndexedDB('fata_history', {
-        id: Date.now(),
-        text: text,
-        snippet: text.slice(0, 80),
-        status: 'pending',
-        timestamp: Date.now()
-      });
-      state.pendingTexts.push({
-        id: Date.now().toString(),
-        text: text,
-        snippet: text.slice(0, 80),
-        status: 'pending',
-        timestamp: Date.now()
-      });
-      showNoMatch(matchResult);
+        // 异步发送双方通知邮件（不阻塞 UI）
+        const emailHashB = await sha256(matchResult.matchInfo.otherEmail || '');
+        ResendRetry.sendWithRetry({
+          matchA: {
+            email,
+            ownTextSnippet: text.slice(0, 120),
+            showOwnText: state.showTextToMatch,
+            seeOtherText: matchResult.matchInfo.otherText ? true : false,
+            textSnippet: matchResult.matchInfo.otherText
+              ? matchResult.matchInfo.otherText.slice(0, 120) : ''
+          },
+          matchB: {
+            email: matchResult.matchInfo.otherEmail,
+            ownTextSnippet: matchResult.matchInfo.otherText
+              ? matchResult.matchInfo.otherText.slice(0, 120) : '',
+            showOwnText: true,
+            seeOtherText: state.showTextToMatch,
+            textSnippet: state.showTextToMatch ? text.slice(0, 120) : '',
+            emailHash: emailHashB
+          },
+          resonance: resonance.resonance,
+          icebreakers: resonance.questions
+        }, matchResult.matchIssueNumber).catch(e => {
+          console.warn('fata: Resend notification failed', e);
+        });
+      } else {
+        await saveToIndexedDB('fata_history', {
+          id: Date.now(),
+          text: text,
+          snippet: text.slice(0, 80),
+          status: 'pending',
+          timestamp: Date.now()
+        });
+        state.pendingTexts.push({
+          id: Date.now().toString(),
+          text: text,
+          snippet: text.slice(0, 80),
+          status: 'pending',
+          timestamp: Date.now()
+        });
+        showNoMatch(matchResult);
+      }
+    } catch (err) {
+      console.error('fata: executeMatch failed', err);
+      showMatchError(err);
     }
   }
 
@@ -1416,6 +1497,19 @@ body {
     }
   }
 
+  function showMatchError(err) {
+    document.getElementById('app').innerHTML = `
+      <div class="no-match">
+        <p class="no-match-main">${t('match.errorMain') || '出了点问题'}</p>
+        <p class="no-match-sub">${t('match.errorSub') || '网络不太稳定，匹配没完成。点下面重试一下就好。'}</p>
+        <div class="actions-row" style="margin-top:24px;">
+          <button class="btn-email" onclick="fata.retryMatch()">${t('match.errorRetry') || '重试'}</button>
+          <button class="btn-secondary" onclick="fata.renderHome()">${t('match.errorBack') || '返回'}</button>
+        </div>
+      </div>
+    `;
+  }
+
   function showSupportResources(resources) {
     document.getElementById('app').innerHTML =
       SafetyHandler.getSupportResourcesHTML(resources);
@@ -1441,6 +1535,9 @@ body {
   function startInterview() {
     document.getElementById('app').innerHTML = `
       <div class="interview-container">
+        <div class="interview-back">
+          <a href="#" onclick="fata.renderHome();return false;">← ${currentLang === 'zh' ? '返回' : 'Back'}</a>
+        </div>
         <div class="interview-messages" id="interview-messages">
           <div class="interview-msg ai">${t('interview.q1')}</div>
         </div>
@@ -1584,7 +1681,7 @@ body {
           <h3>${t('email.title')}</h3>
           <p class="email-privacy-note">
             ${t('email.privacyNote')}
-            <a href="/privacy.html" target="_blank">${t('email.verifyLink')}</a>
+            <a href="/privacy.html?lang=${currentLang}" target="_blank">${t('email.verifyLink')}</a>
           </p>
           <input type="email" id="email-input" class="email-input"
                  placeholder="${t('email.placeholder')}" autofocus>
@@ -1852,6 +1949,14 @@ body {
     },
     switchMatchMode: (mode) => { state.matchMode = mode; renderHome(); },
     submit: handleDeliver,
+    retryMatch: () => {
+      const attempt = state.lastMatchAttempt;
+      if (attempt) {
+        executeMatch(attempt.text, attempt.email, attempt.signalResult);
+      } else {
+        handleDeliver();
+      }
+    },
     ui: {
       showWritePage: () => renderHome(),
       showHistory: () => { state.isReturningUser = true; renderHome(); },
