@@ -187,7 +187,11 @@ const LLMFallback = {
 
   async _matchByEmbeddingOnly(embedding, userEmail) {
     if (window.MatchEngine && window.MatchEngine.findMatch) {
-      return window.MatchEngine.findMatch('', userEmail, null, 'fast_fallback');
+      // 传入已生成的 embedding，避免用空字符串重新生成零向量
+      window.MatchEngine._cachedEmbedding = embedding;
+      const result = await window.MatchEngine.findMatch('', userEmail, null, 'fast_fallback');
+      window.MatchEngine._cachedEmbedding = null;
+      return result;
     }
     return { matched: false, poolSize: 0 };
   },

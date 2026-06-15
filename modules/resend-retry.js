@@ -1,16 +1,11 @@
 /**
- * fata Resend 通知重试 — Loop 2.3
+ * fata Resend 通知重试 — Loop 4.3
  *
  * 职责：
- * - 匹配完成后调用 Resend API 发送通知邮件
+ * - 匹配完成后向双方各发一封独立邮件（正确视角）
  * - Resend 失败 → Match Issue label 设为 matched-pending-notification
  * - CF Worker 定时扫描未发送的通知并重试
  * - 匹配成功后前端直接显示对方邮箱（不依赖邮件送达）
- *
- * 流程重构：
- *   Step 1: close Issue A + Issue B + 创建 Match Issue → 不可逆
- *   Step 2: Resend 通知发送 → 成功 → label = matched
- *   Step 3: Resend 失败 → label = matched-pending-notification → 定时重试
  */
 
 const ResendRetry = {
@@ -21,68 +16,75 @@ const ResendRetry = {
   },
 
   /**
-   * 发送匹配通知（含重试逻辑）
+   * 发送匹配通知（含重试逻辑）— 双方各发一封独立邮件
    *
-   * @param {Object} matchInfo — { matchA: {email,text}, matchB: {email,text}, resonance, icebreakers }
-   * @param {string} matchIssueNumber — Match Issue 的 GitHub Issue 编号
-   * @returns {Promise<Object>} — { success, sent, emailA, emailB }
+   * @param {Object} matchInfo — { personA: {ownEmail,ownText,showOwnText,otherEmail,otherText,showOtherText,emailHash}, personB: {...}, resonance, icebreakers }
+   * @param {string} matchIssueNumber
+   * @returns {Promise<Object>}
    */
   async sendWithRetry(matchInfo, matchIssueNumber) {
-    for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
-      try {
-        if (attempt > 0) {
-          await this._sleep(this.config.retryIntervalsMs[attempt - 1]);
+    const API_BASE = 'https://worker.fata.uk';
+    const endpoint = '/api/resend/send';
+
+    // 分别构建两封邮件
+    const emails = [
+      { to: matchInfo.personA.ownEmail, html: this._buildEmailHTML(matchInfo.personA, matchInfo.resonance, matchInfo.icebreakers) },
+      { to: matchInfo.personB.ownEmail, html: this._buildEmailHTML(matchInfo.personB, matchInfo.resonance, matchInfo.icebreakers) }
+    ];
+
+    let allSent = true;
+
+    for (const email of emails) {
+      let sent = false;
+      for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
+        try {
+          if (attempt > 0) {
+            await this._sleep(this.config.retryIntervalsMs[attempt - 1]);
+          }
+
+          const hmacHeaders = await this._buildHMACHeaders(endpoint);
+          const response = await fetch(API_BASE + endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...hmacHeaders },
+            body: JSON.stringify({
+              to: [email.to],
+              subject: '有人在文字频率上与你共振 — fata',
+              html: email.html,
+              matchIssueNumber
+            })
+          });
+
+          if (response.ok) {
+            sent = true;
+            break;
+          }
+        } catch (e) {
+          console.warn(`ResendRetry: attempt ${attempt + 1} failed for ${email.to}`, e);
         }
-
-        const API_BASE = 'https://worker.fata.uk';
-        const response = await fetch(API_BASE + '/api/resend/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: [matchInfo.matchA.email, matchInfo.matchB.email],
-            subject: '有人在文字频率上与你共振 — fata',
-            html: this._buildEmailHTML(matchInfo),
-            matchIssueNumber
-          })
-        });
-
-        if (response.ok) {
-          // 通知成功 → 更新 Match Issue label 为 matched
-          await this._updateMatchLabel(matchIssueNumber, 'matched');
-
-          return {
-            success: true,
-            sent: true,
-            emailA: matchInfo.matchA.email,
-            emailB: matchInfo.matchB.email
-          };
-        }
-      } catch (e) {
-        console.warn(`ResendRetry: attempt ${attempt + 1} failed`, e);
       }
+      if (!sent) allSent = false;
     }
 
-    // 所有重试失败 → 标记 pending-notification
-    await this._updateMatchLabel(matchIssueNumber, this.config.pendingLabel);
+    if (allSent) {
+      await this._updateMatchLabel(matchIssueNumber, 'matched');
+      return { success: true, sent: true };
+    }
 
-    return {
-      success: false,
-      sent: false,
-      emailA: matchInfo.matchA.email,
-      emailB: matchInfo.matchB.email,
-      pendingRetry: true
-    };
+    // 至少一封失败 → 标记 pending-notification
+    await this._updateMatchLabel(matchIssueNumber, this.config.pendingLabel);
+    return { success: false, sent: false, pendingRetry: true };
   },
 
   /**
-   * 构建通知邮件 HTML（信纸风格）
+   * 构建单封通知邮件 HTML（一人视角）
    */
-  _buildEmailHTML(matchInfo) {
-    const { resonance, icebreakers, matchA, matchB } = matchInfo;
-
+  _buildEmailHTML(person, resonance, icebreakers) {
     const icebreakerItems = (icebreakers || [])
       .map((q, i) => `<li style="margin-bottom:8px;color:#4a4a4a;">${q}</li>`)
       .join('');
+
+    const mailtoSubject = encodeURIComponent('关于那件事——来自 fata 的引介');
+    const mailtoBody = encodeURIComponent('嘿。\n\nfata 说我们的文字频率很接近。\n\n' + resonance + '\n\n—— 你在 fata 上匹配到的人\n');
 
     return `
 <!DOCTYPE html>
@@ -93,46 +95,40 @@ const ResendRetry = {
 
     <p style="font-size:18px;color:#333;line-height:1.8;margin:0 0 32px;">嘿。</p>
 
-    <!-- 共鸣描述 -->
     <p style="font-size:16px;color:#2a2a2a;line-height:2;margin:0 0 32px;">
       ${resonance}
     </p>
 
-    <!-- 引用用户自己的文字 -->
-    ${matchA.showOwnText ? `
+    ${person.showOwnText ? `
     <div style="border-left:2px solid #e0d8cc;padding-left:16px;margin:0 0 24px;">
       <p style="font-size:14px;color:#999;margin:0 0 8px;">还记得你写下的这段话吗——</p>
       <p style="font-size:15px;color:#555;line-height:1.9;margin:0;font-style:italic;">
-        "${matchA.ownTextSnippet}"
+        "${person.ownText}"
       </p>
     </div>` : ''}
 
-    <!-- 对方文字片段 -->
-    ${matchA.seeOtherText ? `
+    ${person.showOtherText ? `
     <div style="border-left:2px solid #e0d8cc;padding-left:16px;margin:0 0 32px;">
       <p style="font-size:14px;color:#999;margin:0 0 8px;">TA 写了——</p>
       <p style="font-size:15px;color:#555;line-height:1.9;margin:0;font-style:italic;">
-        "${matchB.textSnippet}"
+        "${person.otherText}"
       </p>
     </div>` : ''}
 
-    <!-- 对方邮箱 -->
     <div style="background:#faf9f6;padding:20px 24px;border-radius:4px;margin:0 0 24px;">
       <p style="font-size:14px;color:#999;margin:0 0 8px;">TA 的邮箱</p>
       <p style="font-size:20px;color:#2a2a2a;margin:0;font-weight:bold;letter-spacing:0.5px;">
-        ${matchB.email}
+        ${person.otherEmail}
       </p>
     </div>
 
-    <!-- 破冰问题 -->
     ${icebreakerItems ? `
     <div style="margin:0 0 32px;">
       <p style="font-size:14px;color:#999;margin:0 0 12px;">不知道怎么下笔？试试这几句——</p>
       <ul style="padding-left:20px;margin:0;">${icebreakerItems}</ul>
     </div>` : ''}
 
-    <!-- mailto: CTA -->
-    <a href="mailto:${matchB.email}?subject=%E5%85%B3%E4%BA%8E%E9%82%A3%E4%BB%B6%E4%BA%8B%E2%80%94%E2%80%94%E6%9D%A5%E8%87%AA%20fata%20%E7%9A%84%E5%BC%95%E4%BB%8B&body=%E5%98%BF%E3%80%82%0A%0Afata%20%E8%AF%B4%E6%88%91%E4%BB%AC%E7%9A%84%E6%96%87%E5%AD%97%E9%A2%91%E7%8E%87%E5%BE%88%E6%8E%A5%E8%BF%91%E3%80%82%0A%0A%E2%80%94%E2%80%94%20%E4%BD%A0%E5%9C%A8%20fata%20%E4%B8%8A%E5%8C%B9%E9%85%8D%E5%88%B0%E7%9A%84%E4%BA%BA%0A%0A%5B%E9%9C%87%E5%85%B1%E9%B8%A3%E6%8F%8F%E8%BF%B0%5D%0A${encodeURIComponent(resonance)}%0A%0A"
+    <a href="mailto:${person.otherEmail}?subject=${mailtoSubject}&body=${mailtoBody}"
       style="display:inline-block;background:#2a2a2a;color:#fff;text-decoration:none;padding:14px 32px;border-radius:4px;font-size:15px;font-family:Georgia,serif;">
       写信给 TA
     </a>
@@ -141,15 +137,13 @@ const ResendRetry = {
       如果按钮打不开，直接复制上面的邮箱地址到你的邮件客户端中新建邮件。
     </p>
 
-    <!-- 分隔线 -->
     <hr style="border:none;border-top:1px solid #e8e4dc;margin:32px 0;">
 
-    <!-- 底部说明 -->
     <p style="font-size:12px;color:#ccc;line-height:1.8;margin:0;">
       通信在你自己的邮箱中进行。fata 只是一个引介工具——把人介绍给你后，它主动退出。<br>
       <a href="https://fata.uk" style="color:#bbb;">想再写一封？回到 fata</a>
       &nbsp;·&nbsp;
-      <a href="https://worker.fata.uk/unsubscribe?h=${encodeURIComponent(matchB.emailHash || '')}" style="color:#bbb;">暂停通知</a>
+      <a href="https://worker.fata.uk/unsubscribe?h=${encodeURIComponent(person.emailHash || '')}" style="color:#bbb;">暂停通知</a>
     </p>
 
   </div>
@@ -163,14 +157,31 @@ const ResendRetry = {
   async _updateMatchLabel(issueNumber, newLabel) {
     try {
       const API_BASE = 'https://worker.fata.uk';
-      await fetch(API_BASE + `/api/github/issues/${issueNumber}/label`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: newLabel })
+      const endpoint = `/api/github/issues/${issueNumber}/labels`;
+      const hmacHeaders = await this._buildHMACHeaders(endpoint);
+      await fetch(API_BASE + endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...hmacHeaders },
+        body: JSON.stringify({ labels: [newLabel] })
       });
     } catch (e) {
       console.error('ResendRetry: Failed to update issue label', e);
     }
+  },
+
+  async _buildHMACHeaders(endpoint) {
+    const rawKey = (typeof window !== 'undefined' && window.HMAC_KEY_RAW) || '';
+    if (!rawKey) return {};
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const path = new URL(endpoint, 'https://worker.fata.uk').pathname;
+    const message = `${timestamp}:${path}`;
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(rawKey);
+    const key = await crypto.subtle.importKey('raw', keyData,
+      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
+    const sigStr = btoa(String.fromCharCode(...new Uint8Array(sig)));
+    return { 'X-Fata-Signature': sigStr, 'X-Fata-Timestamp': timestamp };
   },
 
   _sleep(ms) {

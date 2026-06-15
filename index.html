@@ -150,19 +150,7 @@ body {
 }
 .interview-prompt a:hover { border-bottom-color: var(--warm); opacity: 0.8; }
 
-/* 写作启发片段 */
-.snippet-scroll {
-  margin-bottom: 36px; max-width: 480px; width: 100%;
-}
-.snippet-item {
-  font-family: var(--font-serif); font-size: 14px; color: var(--text-subtle);
-  line-height: 1.8; margin-bottom: 14px; font-style: italic;
-  text-align: left; padding-left: 14px; border-left: 2px solid rgba(196,122,74,0.3);
-}
-.snippet-label {
-  font-size: 12px; color: var(--text-whisper); text-align: left;
-  margin-bottom: 14px; letter-spacing: 0.02em;
-}
+
 
 /* 隐私选择行 */
 .privacy-options {
@@ -172,28 +160,7 @@ body {
 .privacy-options label { cursor: pointer; display: flex; align-items: center; gap: 6px; }
 .privacy-options input[type=checkbox] { accent-color: var(--warm); }
 
-/* 匹配模式选择 */
-.match-mode-selector {
-  display: flex; gap: 2px; justify-content: center; margin-bottom: 0;
-  background: rgba(0,0,0,0.04); padding: 4px; border-radius: 10px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-.match-mode-btn {
-  font-size: 12px; padding: 7px 18px; border-radius: 8px;
-  border: none; background: transparent;
-  color: var(--text-subtle); cursor: pointer; font-family: var(--font-sans);
-  transition: all 0.25s var(--spring); font-weight: 500;
-}
-.match-mode-btn.active {
-  background: #fff; color: var(--text);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-}
-.match-mode-desc {
-  font-size: 12px; color: var(--text-whisper);
-  text-align: center; margin-top: 6px; margin-bottom: 10px;
-  transition: opacity 0.2s;
-}
+
 
 /* 投递按钮 */
 .btn-deliver {
@@ -507,7 +474,6 @@ body {
   .resonance-rings { width: 100px; height: 100px; }
   .landing-wave-line { width: 80px; height: 18px; }
   .privacy-options { flex-direction: column; gap: 12px; }
-  .match-mode-selector { flex-direction: column; gap: 2px; }
   .btn-deliver { padding: 14px 40px; font-size: 15px; }
 }
 
@@ -637,7 +603,7 @@ body {
       'nomatch.sub': '有人读懂了，就会来信。这可能需要一点时间。',
       'nomatch.echoHint': '一段与你频率相近的话。也许你们会在下一次遇见。',
       'nomatch.share': '分享 fata 给朋友',
-      'nomatch.retry': '你的文字将在 3 天后自动重新进入匹配池，寻找更接近的人。',
+
       'nomatch.shareTitle': 'fata — 找到文字频率最接近的陌生人',
 
       'interview.q1': '你今天打开 fata，最想有人跟你聊什么？',
@@ -665,6 +631,12 @@ body {
       'snippet.default2': '失眠第三天。开始怀疑是不是床的问题而不是我的问题。',
       'snippet.default3': '很久没联系的朋友突然发了条消息。我没回。不知道回什么。',
       'echo.fallback': '最近在学吉他。手指磨破了但很开心。不知道为什么突然想做一件没有用的事。',
+
+      'share.matchHint': '把这次相遇告诉朋友 →',
+      'share.matchText': '刚刚，有一个人读到了我的文字。我们还收到了彼此的邮箱。这种感觉很奇怪，但很好。',
+      'share.matchUrl': 'fata.uk',
+      'share.copy': '复制这段话',
+      'share.copied': '✓ 已复制',
 
       'browserGuide.title': '建议在系统浏览器中打开 fata<br>以获得完整体验',
       'browserGuide.hint': '点击右上角 ··· → 在浏览器中打开',
@@ -770,7 +742,7 @@ body {
       'nomatch.sub': 'When someone reads and understands, they\'ll write. It might take a little time.',
       'nomatch.echoHint': 'A piece close to your frequency. Maybe you\'ll meet next time.',
       'nomatch.share': 'Share fata with a friend',
-      'nomatch.retry': 'Your words will re-enter the matching pool in 3 days to find someone closer.',
+
       'nomatch.shareTitle': 'fata — Find the stranger whose frequency matches yours',
 
       'interview.q1': 'What do you most want someone to talk with you about today?',
@@ -798,6 +770,12 @@ body {
       'snippet.default2': 'Third night of insomnia. Starting to wonder if it\'s the bed, not me.',
       'snippet.default3': 'An old friend messaged out of nowhere. I didn\'t reply. Didn\'t know what to say.',
       'echo.fallback': 'Learning guitar lately. Fingers are raw but happy. Not sure why I suddenly wanted to do something useless.',
+
+      'share.matchHint': 'Tell a friend about this moment →',
+      'share.matchText': 'Someone just read my words. We got each other\'s email. It feels strange, and good.',
+      'share.matchUrl': 'fata.uk',
+      'share.copy': 'Copy',
+      'share.copied': '✓ Copied',
 
       'browserGuide.title': 'Open fata in your system browser<br>for the full experience',
       'browserGuide.hint': 'Tap the top-right ··· → Open in Browser',
@@ -936,6 +914,7 @@ body {
       if (keyResp.ok) {
         HMAC_KEY_RAW = sessionStorage.getItem('fata_hmac_key') ||
           await _fetchHMACKey();
+        window.HMAC_KEY_RAW = HMAC_KEY_RAW;
       }
     } catch (e) {
       console.warn('fata: HMAC key fetch failed, API calls will be unsigned');
@@ -1067,8 +1046,6 @@ body {
           ${prompts.map(p => `<button class="writing-prompt" data-text="${p.text}">${p.text}</button>`).join('')}
         </div>
 
-        <div class="snippet-scroll" id="snippet-scroll"></div>
-
         <div class="privacy-options">
           <label>
             <input type="checkbox" id="show-text-check" checked>
@@ -1080,13 +1057,6 @@ body {
           </label>
         </div>
 
-        <div class="match-mode-selector">
-          <button class="match-mode-btn active" data-mode="deep">${t('landing.deepMatch')}</button>
-          <button class="match-mode-btn" data-mode="fast">${t('landing.fastMatch')}</button>
-        </div>
-
-        <p class="match-mode-desc" id="match-mode-desc">${t('landing.deepMatchDesc')}</p>
-
         <button class="btn-deliver" id="btn-deliver">${t('landing.deliver')}</button>
 
         <div style="width:200px;height:1px;background:linear-gradient(to right,transparent,rgba(196,122,74,0.25),transparent);margin:24px auto 0;"></div>
@@ -1095,7 +1065,6 @@ body {
 
     // 事件绑定
     bindLandingEvents();
-    loadWritingSnippets();
   }
 
   function renderReturningHome(app) {
@@ -1108,7 +1077,10 @@ body {
           <span class="text-history-date">${formatDate(t.timestamp)}</span>
           <span class="text-history-topic">${t.snippet || '...'}</span>
         </div>
-        <span class="text-history-status status-${t.status}">${statusLabel(t.status)}</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="text-history-status status-${t.status}">${statusLabel(t.status)}</span>
+          ${t.status === 'pending' && t.issueNumber ? `<button class="btn-delete-text" data-id="${t.id}" data-issue="${t.issueNumber}" title="${currentLang === 'zh' ? '撤回这段文字' : 'Withdraw'}" style="background:none;border:1px solid var(--border);border-radius:50%;width:24px;height:24px;font-size:14px;line-height:1;cursor:pointer;color:var(--text-subtle);display:flex;align-items:center;justify-content:center;transition:all 0.2s;">&times;</button>` : ''}
+        </div>
       </div>
     `).join('');
 
@@ -1132,6 +1104,18 @@ body {
       state.isReturningUser = false;
       renderLanding(app);
     });
+
+    // 删除 pending 文字
+    document.querySelectorAll('.btn-delete-text').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const issueNumber = parseInt(btn.dataset.issue);
+        if (confirm(currentLang === 'zh' ? '确定撤回这段文字吗？它将从匹配池中移除。' : 'Withdraw this text? It will be removed from the matching pool.')) {
+          await deletePendingText(id, issueNumber);
+        }
+      });
+    });
   }
 
   // ===== 事件处理 =====
@@ -1145,18 +1129,6 @@ body {
         textarea.value = btn.dataset.text;
         textarea.focus();
         updateLengthHint();
-      });
-    });
-
-    // 匹配模式切换
-    document.querySelectorAll('.match-mode-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.match-mode-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        state.matchMode = btn.dataset.mode;
-        const desc = document.getElementById('match-mode-desc');
-        if (desc) desc.textContent = btn.dataset.mode === 'deep'
-          ? t('landing.deepMatchDesc') : t('landing.fastMatchDesc');
       });
     });
 
@@ -1230,7 +1202,7 @@ body {
         return;
       }
       if (localCheck.action === 'reject') {
-        showRejection({ cooldownMinutes: 60 });
+        showRejection({ cooldownSeconds: 3600 });
         return;
       }
     }
@@ -1251,6 +1223,39 @@ body {
 
   // ===== 匹配流程 =====
 
+  // 将用户文字创建为 pending GitHub Issue（入匹配池）
+  async function createPendingIssue(text, email, intentProfile) {
+    const embedding = await MatchEngine._generateEmbedding(text);
+    const embEncrypted = await encryptData(embedding);
+    const emailEncrypted = await encryptEmail(email);
+    const emailHash = await sha256(email);
+    const snippet = text.length > 80 ? text.slice(0, 80) : text;
+
+    const body = JSON.stringify({
+      e: embEncrypted,
+      m: emailEncrypted,
+      h: emailHash,
+      text_snippet: snippet,
+      ...(intentProfile ? { i: await encryptData(intentProfile) } : {})
+    });
+
+    const endpoint = '/api/github/issues';
+    const hmacHeaders = await LLMFallback._buildHMACHeaders(endpoint, HMAC_KEY_RAW);
+    const resp = await fetch(API_BASE + endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...hmacHeaders },
+      body: JSON.stringify({ title: snippet.slice(0, 30), body, labels: ['pending'] })
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error('createPendingIssue failed: ' + resp.status + ' ' + errText);
+    }
+
+    const issue = await resp.json();
+    return { issueNumber: issue.number, embedding };
+  }
+
   async function executeMatch(text, email, signalResult) {
     try {
       showWaiting('正在感受你的文字...');
@@ -1258,24 +1263,47 @@ body {
       // 意图解析（深度匹配模式）
       let intentProfile = null;
       if (state.matchMode === 'deep') {
-        const intentResult = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
-          prompt_type: 'intent_parse',
-          text_a: text
-        }, HMAC_KEY_RAW);
-        if (intentResult) {
-          intentProfile = intentResult;
+        try {
+          const intentResult = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
+            prompt_type: 'intent_parse',
+            text_a: text
+          }, HMAC_KEY_RAW);
+          if (intentResult) {
+            intentProfile = intentResult;
+          }
+        } catch (e) {
+          throw new Error('[LLM intent] ' + (e.message || e));
         }
       }
 
+      // Step A: 用户文字入匹配池
+      showWaiting('正在将你的文字放入匹配池...');
+      let userIssue;
+      try {
+        userIssue = await createPendingIssue(text, email, intentProfile);
+      } catch (e) {
+        throw new Error('[createIssue] ' + (e.message || e));
+      }
+
+      // Step B: 在池中寻找匹配
       showWaiting('正在将你的频率和池子里的文字进行对比...');
 
-      // 匹配
-      const matchResult = await MatchEngine.findMatch(
-        text,
-        await encryptEmail(email),
-        intentProfile,
-        state.matchMode
-      );
+      const snippet = text.length > 80 ? text.slice(0, 80) : text;
+      const emailHash = await sha256(email);
+      let matchResult;
+      try {
+        matchResult = await MatchEngine.findMatch(
+          text,
+          await encryptEmail(email),
+          intentProfile,
+          state.matchMode,
+          userIssue.issueNumber,  // 排除自己的 issue
+          emailHash               // 排除同邮箱的旧 issue（跨 session 自匹配防护）
+        );
+      } catch (e) {
+        console.error('fata: findMatch failed', e);
+        throw e;
+      }
 
       if (matchResult.matched) {
         // 生成共鸣描述
@@ -1287,63 +1315,172 @@ body {
           snippet: text.slice(0, 80),
           status: 'matched',
           timestamp: Date.now(),
-          matchEmail: matchResult.matchInfo.otherEmail
+          matchEmail: matchResult.matchInfo.otherEmail,
+          issueNumber: userIssue.issueNumber
         });
         state.pendingTexts.push({
           id: Date.now().toString(),
           text: text,
           snippet: text.slice(0, 80),
           status: 'matched',
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          issueNumber: userIssue.issueNumber
         });
         showMatchSuccess(matchResult, resonance, text);
 
-        // 异步发送双方通知邮件（不阻塞 UI）
-        const emailHashB = await sha256(matchResult.matchInfo.otherEmail || '');
-        ResendRetry.sendWithRetry({
-          matchA: {
-            email,
-            ownTextSnippet: text.slice(0, 120),
-            showOwnText: state.showTextToMatch,
-            seeOtherText: matchResult.matchInfo.otherText ? true : false,
-            textSnippet: matchResult.matchInfo.otherText
-              ? matchResult.matchInfo.otherText.slice(0, 120) : ''
-          },
-          matchB: {
-            email: matchResult.matchInfo.otherEmail,
-            ownTextSnippet: matchResult.matchInfo.otherText
-              ? matchResult.matchInfo.otherText.slice(0, 120) : '',
-            showOwnText: true,
-            seeOtherText: state.showTextToMatch,
-            textSnippet: state.showTextToMatch ? text.slice(0, 120) : '',
-            emailHash: emailHashB
-          },
-          resonance: resonance.resonance,
-          icebreakers: resonance.questions
-        }, matchResult.matchIssueNumber).catch(e => {
-          console.warn('fata: Resend notification failed', e);
+        // Step C: 关掉双方 pending issue → 创建 match issue → 发送邮件（链式异步，不阻塞 UI）
+        const matchedIssue = matchResult.bestIssue;
+        const otherEmail = matchResult.matchInfo.otherEmail;
+        closeMatchedIssues(userIssue.issueNumber, matchedIssue, text, snippet).then(matchIssueNum => {
+          const finalNum = matchIssueNum || matchResult.matchIssueNumber;
+          const otherTextSnippet = matchResult.matchInfo.otherText
+            ? matchResult.matchInfo.otherText.slice(0, 120) : '';
+          return sha256(otherEmail || '').then(emailHashB =>
+            ResendRetry.sendWithRetry({
+              personA: {
+                ownEmail: email,
+                ownText: text.slice(0, 120),
+                showOwnText: state.showTextToMatch,
+                otherEmail: otherEmail,
+                otherText: otherTextSnippet,
+                showOtherText: true,
+                emailHash: ''
+              },
+              personB: {
+                ownEmail: otherEmail,
+                ownText: otherTextSnippet,
+                showOwnText: true,
+                otherEmail: email,
+                otherText: text.slice(0, 120),
+                showOtherText: state.showTextToMatch,
+                emailHash: emailHashB
+              },
+              resonance: resonance.resonance,
+              icebreakers: resonance.questions
+            }, finalNum)
+          );
+        }).catch(e => {
+          console.warn('fata: post-match cleanup failed', e);
         });
       } else {
+        // 暂无匹配：文字已入池，等待后来者
         await saveToIndexedDB('fata_history', {
           id: Date.now(),
           text: text,
           snippet: text.slice(0, 80),
           status: 'pending',
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          issueNumber: userIssue.issueNumber
         });
         state.pendingTexts.push({
           id: Date.now().toString(),
           text: text,
           snippet: text.slice(0, 80),
           status: 'pending',
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          issueNumber: userIssue.issueNumber
         });
         showNoMatch(matchResult);
       }
     } catch (err) {
       console.error('fata: executeMatch failed', err);
-      showMatchError(err);
+      showMatchError(err, err.stack || '');
     }
+  }
+
+  // 用户主动撤回 pending 文字
+  async function deletePendingText(id, issueNumber) {
+    try {
+      // 关闭 GitHub Issue
+      const endpoint = '/api/github/issues/' + issueNumber;
+      const headers = await LLMFallback._buildHMACHeaders(endpoint, HMAC_KEY_RAW);
+      const resp = await fetch(API_BASE + endpoint, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ state: 'closed' })
+      });
+      if (!resp.ok) throw new Error('Close issue failed: ' + resp.status);
+
+      // 从本地状态移除
+      state.pendingTexts = state.pendingTexts.filter(t => t.id !== id);
+
+      // 重新持久化到 IndexedDB
+      await rewriteHistory(state.pendingTexts);
+
+      // 刷新界面
+      renderReturningHome(document.getElementById('app'));
+    } catch (e) {
+      console.error('fata: deletePendingText failed', e);
+      alert(currentLang === 'zh' ? '撤回失败，请稍后重试' : 'Withdraw failed, please try again later');
+    }
+  }
+
+  // 重写 IndexedDB 中的历史记录
+  async function rewriteHistory(items) {
+    try {
+      const DB_NAME = 'fata_user_data';
+      return new Promise((resolve) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction('fata_history', 'readwrite');
+          const store = tx.objectStore('fata_history');
+          store.clear();
+          for (const item of items) {
+            store.put(item);
+          }
+          tx.oncomplete = () => resolve();
+        };
+        request.onerror = () => resolve();
+      });
+    } catch (e) { /* ignore */ }
+  }
+
+  // 匹配成功后：关闭双方的 pending issue，创建 match issue
+  async function closeMatchedIssues(userIssueNumber, matchedIssue, userText, userSnippet) {
+    // 每次请求单独生成 HMAC 签名，因为路径不同
+    const closeUserHeaders = await LLMFallback._buildHMACHeaders('/api/github/issues/' + userIssueNumber, HMAC_KEY_RAW);
+    // 关闭用户自己的 issue
+    await fetch(API_BASE + '/api/github/issues/' + userIssueNumber, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...closeUserHeaders },
+      body: JSON.stringify({ state: 'closed' })
+    });
+
+    // 关闭匹配到的 issue
+    const matchedNumber = matchedIssue ? matchedIssue.number : null;
+    if (matchedNumber && matchedNumber !== userIssueNumber) {
+      const closeMatchHeaders = await LLMFallback._buildHMACHeaders('/api/github/issues/' + matchedNumber, HMAC_KEY_RAW);
+      await fetch(API_BASE + '/api/github/issues/' + matchedNumber, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...closeMatchHeaders },
+        body: JSON.stringify({ state: 'closed' })
+      });
+    }
+
+    // 创建 match issue（记录匹配事件）
+    const matchBody = JSON.stringify({
+      user_issue: userIssueNumber,
+      matched_issue: matchedNumber,
+      user_snippet: userSnippet,
+      matched_snippet: matchedIssue ? (matchedIssue.body?.text_snippet || '') : '',
+      timestamp: Date.now()
+    });
+    const matchHeaders = await LLMFallback._buildHMACHeaders('/api/github/issues', HMAC_KEY_RAW);
+    const matchResp = await fetch(API_BASE + '/api/github/issues', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...matchHeaders },
+      body: JSON.stringify({
+        title: 'Match: ' + (userText || '').slice(0, 20),
+        body: matchBody,
+        labels: ['matched']
+      })
+    });
+    if (matchResp.ok) {
+      const matchIssue = await matchResp.json();
+      return matchIssue.number;
+    }
+    return null;
   }
 
   async function generateResonance(textA, textB) {
@@ -1447,6 +1584,17 @@ body {
             ${t('match.writeAgain')}
           </button>
         </div>
+
+        <div class="match-share-hint">
+          <span class="match-share-toggle" id="match-share-toggle">
+            ${t('share.matchHint').replace('→', '<span class="arrow">→</span>')}
+          </span>
+          <div class="match-share-content" id="match-share-content">
+            <div class="match-share-text">${t('share.matchText')}</div>
+            <div class="match-share-url">${t('share.matchUrl')}</div>
+            <span class="match-share-copy-btn" id="match-share-copy">${t('share.copy')}</span>
+          </div>
+        </div>
       </div>
     `;
 
@@ -1462,6 +1610,30 @@ body {
           navigator.clipboard.writeText(el.dataset.copy).catch(() => {});
         });
       });
+
+      // 分享模块 toggle
+      const shareToggle = document.getElementById('match-share-toggle');
+      const shareContent = document.getElementById('match-share-content');
+      const shareCopyBtn = document.getElementById('match-share-copy');
+      if (shareToggle && shareContent) {
+        shareToggle.addEventListener('click', () => {
+          shareToggle.classList.toggle('open');
+          shareContent.classList.toggle('open');
+        });
+      }
+      if (shareCopyBtn) {
+        shareCopyBtn.addEventListener('click', () => {
+          const text = `${t('share.matchText')}\n${t('share.matchUrl')}`;
+          navigator.clipboard.writeText(text).then(() => {
+            shareCopyBtn.textContent = t('share.copied');
+            shareCopyBtn.classList.add('copied');
+            setTimeout(() => {
+              shareCopyBtn.textContent = t('share.copy');
+              shareCopyBtn.classList.remove('copied');
+            }, 2000);
+          }).catch(() => {});
+        });
+      }
     });
   }
 
@@ -1481,9 +1653,6 @@ body {
           <button class="btn-email" onclick="fata.renderHome()">${t('match.writeAgain')}</button>
           <button class="btn-secondary" id="btn-share">${t('nomatch.share')}</button>
         </div>
-        <p style="font-size:12px;color:var(--text-whisper);margin-top:16px;">
-          ${t('nomatch.retry')}
-        </p>
       </div>
     `;
 
@@ -1497,14 +1666,19 @@ body {
     }
   }
 
-  function showMatchError(err) {
+  function showMatchError(err, stack) {
+    const zh = currentLang === 'zh';
+    const errMsg = err && err.message ? err.message : String(err || '');
+    const stackLine = stack ? stack.split('\n').slice(1, 4).map(s => s.trim()).join(' → ') : '';
     document.getElementById('app').innerHTML = `
       <div class="no-match">
-        <p class="no-match-main">${t('match.errorMain') || '出了点问题'}</p>
-        <p class="no-match-sub">${t('match.errorSub') || '网络不太稳定，匹配没完成。点下面重试一下就好。'}</p>
+        <p class="no-match-main">${zh ? '出了点问题' : 'Something went wrong'}</p>
+        <p class="no-match-sub">${zh ? '网络不太稳定，匹配没完成。点下面重试一下就好。' : 'The network is unstable and matching could not complete. Try again below.'}</p>
+        ${errMsg ? `<p style="font-size:11px;color:var(--text-whisper);font-family:var(--font-mono);word-break:break-all;margin:8px 0;">${errMsg}</p>` : ''}
+        ${stackLine ? `<p style="font-size:9px;color:var(--text-whisper);font-family:var(--font-mono);word-break:break-all;margin:4px 0;opacity:0.7;">${stackLine}</p>` : ''}
         <div class="actions-row" style="margin-top:24px;">
-          <button class="btn-email" onclick="fata.retryMatch()">${t('match.errorRetry') || '重试'}</button>
-          <button class="btn-secondary" onclick="fata.renderHome()">${t('match.errorBack') || '返回'}</button>
+          <button class="btn-email" onclick="fata.retryMatch()">${zh ? '重试' : 'Retry'}</button>
+          <button class="btn-secondary" onclick="fata.renderHome()">${zh ? '返回' : 'Back'}</button>
         </div>
       </div>
     `;
@@ -1726,10 +1900,14 @@ body {
   }
 
   async function encryptEmail(email) {
-    // 使用 AES-256-GCM 加密，密钥从 HMAC_KEY_RAW 派生（与 decrypt 端对齐）
-    // 加密后的格式：base64(iv + ciphertext)
+    return encryptData(email);
+  }
+
+  async function encryptData(data) {
+    // 使用 AES-256-GCM 加密，密钥从 HMAC_KEY_RAW 派生
     try {
       const encoder = new TextEncoder();
+      const plaintext = JSON.stringify(data);
       const keyData = encoder.encode(HMAC_KEY_RAW).slice(0, 32); // 256-bit
       const key = await crypto.subtle.importKey('raw', keyData,
         { name: 'AES-GCM' }, false, ['encrypt']);
@@ -1737,15 +1915,14 @@ body {
       const ciphertext = await crypto.subtle.encrypt(
         { name: 'AES-GCM', iv },
         key,
-        encoder.encode(email)
+        encoder.encode(plaintext)
       );
-      // 拼接 IV + ciphertext
       const combined = new Uint8Array(iv.length + ciphertext.byteLength);
       combined.set(iv);
       combined.set(new Uint8Array(ciphertext), iv.length);
       return btoa(String.fromCharCode(...combined));
     } catch (e) {
-      console.error('fata: encryptEmail failed', e);
+      console.error('fata: encryptData failed', e);
       throw e;
     }
   }
@@ -1772,82 +1949,15 @@ body {
     return '';
   }
 
-  async function loadWritingSnippets() {
-    const container = document.getElementById('snippet-scroll');
-    if (!container) return;
 
-    // 尝试从种子 Issue 加载（带 IndexedDB 24h 缓存）
-    try {
-      const cached = await loadSnippetCache();
-      if (cached && cached.snippets && cached.snippets.length > 0) {
-        renderSnippets(cached.snippets);
-        return;
-      }
 
-      const resp = await fetch(API_BASE + '/api/github/issues?labels=seed&per_page=5&state=open');
-      if (resp.ok) {
-        const issues = await resp.json();
-        const snippets = issues
-          .map(i => (i.body && i.body.text_snippet) ? i.body.text_snippet : null)
-          .filter(Boolean)
-          .slice(0, 5);
-        if (snippets.length > 0) {
-          await saveSnippetCache(snippets);
-          renderSnippets(snippets);
-          return;
-        }
-      }
-    } catch (e) {
-      // API 不可用时用硬编码默认值（保持界面不空）
-    }
 
-    const defaults = [
-      t('snippet.default1'),
-      t('snippet.default2'),
-      t('snippet.default3')
-    ];
-    renderSnippets(defaults);
-  }
 
-  function renderSnippets(snippets) {
-    const container = document.getElementById('snippet-scroll');
-    if (!container) return;
-    container.innerHTML = `
-      <div class="snippet-label">${t('snippets.label')}</div>
-      ${snippets.map(s => `<div class="snippet-item">"${escapeHTML(s)}"</div>`).join('')}
-    `;
-  }
 
-  async function loadSnippetCache() {
-    try {
-      const raw = localStorage.getItem('fata_snippet_cache');
-      if (!raw) return null;
-      const cached = JSON.parse(raw);
-      if (Date.now() - cached.ts < 86400000) return cached; // 24h
-    } catch (e) { /* ignore */ }
-    return null;
-  }
 
-  async function saveSnippetCache(snippets) {
-    try {
-      localStorage.setItem('fata_snippet_cache', JSON.stringify({
-        snippets,
-        ts: Date.now()
-      }));
-    } catch (e) { /* ignore */ }
-  }
+
 
   function getEchoSnippet() {
-    // 尝试从缓存的种子片段中选一条
-    try {
-      const raw = localStorage.getItem('fata_snippet_cache');
-      if (raw) {
-        const cached = JSON.parse(raw);
-        if (cached.snippets && cached.snippets.length > 0) {
-          return cached.snippets[Math.floor(Math.random() * cached.snippets.length)];
-        }
-      }
-    } catch (e) { /* ignore */ }
     return t('echo.fallback');
   }
 
