@@ -25,12 +25,18 @@ const ResendRetry = {
   async sendWithRetry(matchInfo, matchIssueNumber) {
     const API_BASE = 'https://worker.fata.uk';
     const endpoint = '/api/resend/send';
+    const lang = matchInfo.lang || 'zh';
+    const isEn = lang === 'en';
 
     // 分别构建两封邮件
     const emails = [
-      { to: matchInfo.personA.ownEmail, html: this._buildEmailHTML(matchInfo.personA, matchInfo.resonance, matchInfo.icebreakers) },
-      { to: matchInfo.personB.ownEmail, html: this._buildEmailHTML(matchInfo.personB, matchInfo.resonance, matchInfo.icebreakers) }
+      { to: matchInfo.personA.ownEmail, html: this._buildEmailHTML(matchInfo.personA, matchInfo.resonance, matchInfo.icebreakers, lang) },
+      { to: matchInfo.personB.ownEmail, html: this._buildEmailHTML(matchInfo.personB, matchInfo.resonance, matchInfo.icebreakers, lang) }
     ];
+
+    const subject = isEn
+      ? 'Someone resonates with your words — fata'
+      : '有人在文字频率上与你共振 — fata';
 
     let allSent = true;
 
@@ -48,7 +54,7 @@ const ResendRetry = {
             headers: { 'Content-Type': 'application/json', ...hmacHeaders },
             body: JSON.stringify({
               to: [email.to],
-              subject: '有人在文字频率上与你共振 — fata',
+              subject: subject,
               html: email.html,
               matchIssueNumber
             })
@@ -78,14 +84,66 @@ const ResendRetry = {
   /**
    * 构建单封通知邮件 HTML（一人视角）
    */
-  _buildEmailHTML(person, resonance, icebreakers) {
+  _buildEmailHTML(person, resonance, icebreakers, lang) {
+    const isEn = lang === 'en';
     const icebreakerItems = (icebreakers || [])
       .map((q, i) => `<li style="margin-bottom:8px;color:#4a4a4a;">${q}</li>`)
       .join('');
 
-    const mailtoSubject = encodeURIComponent('关于那件事——来自 fata 的引介');
-    const mailtoBody = encodeURIComponent('嘿。\n\nfata 说我们的文字频率很接近。\n\n' + resonance + '\n\n—— 你在 fata 上匹配到的人\n');
+    const mailtoSubject = isEn
+      ? encodeURIComponent('About that thing — introduced by fata')
+      : encodeURIComponent('关于那件事——来自 fata 的引介');
+    const mailtoBody = isEn
+      ? encodeURIComponent('Hey.\n\nfata says our word frequencies are close.\n\n' + resonance + '\n\n— Your match on fata\n')
+      : encodeURIComponent('嘿。\n\nfata 说我们的文字频率很接近。\n\n' + resonance + '\n\n—— 你在 fata 上匹配到的人\n');
 
+    if (isEn) {
+      return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="background:#faf9f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px 20px;margin:0;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;padding:48px 40px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+    <p style="font-size:18px;color:#333;line-height:1.8;margin:0 0 32px;">Hey.</p>
+    <p style="font-size:16px;color:#2a2a2a;line-height:2;margin:0 0 32px;">${resonance}</p>
+    ${person.showOwnText ? `
+    <div style="border-left:2px solid #e0d8cc;padding-left:16px;margin:0 0 24px;">
+      <p style="font-size:14px;color:#999;margin:0 0 8px;">You wrote —</p>
+      <p style="font-size:15px;color:#555;line-height:1.9;margin:0;font-style:italic;">"${person.ownText}"</p>
+    </div>` : ''}
+    ${person.showOtherText ? `
+    <div style="border-left:2px solid #e0d8cc;padding-left:16px;margin:0 0 32px;">
+      <p style="font-size:14px;color:#999;margin:0 0 8px;">They wrote —</p>
+      <p style="font-size:15px;color:#555;line-height:1.9;margin:0;font-style:italic;">"${person.otherText}"</p>
+    </div>` : ''}
+    <div style="background:#faf9f6;padding:20px 24px;border-radius:4px;margin:0 0 24px;">
+      <p style="font-size:14px;color:#999;margin:0 0 8px;">Their email</p>
+      <p style="font-size:20px;color:#2a2a2a;margin:0;font-weight:bold;letter-spacing:0.5px;">${person.otherEmail}</p>
+    </div>
+    ${icebreakerItems ? `
+    <div style="margin:0 0 32px;">
+      <p style="font-size:14px;color:#999;margin:0 0 12px;">Not sure how to start? Try —</p>
+      <ul style="padding-left:20px;margin:0;">${icebreakerItems}</ul>
+    </div>` : ''}
+    <a href="mailto:${person.otherEmail}?subject=${mailtoSubject}&body=${mailtoBody}"
+      style="display:inline-block;background:#2a2a2a;color:#fff;text-decoration:none;padding:14px 32px;border-radius:4px;font-size:15px;">
+      Write to them
+    </a>
+    <p style="font-size:13px;color:#bbb;margin:32px 0 0;line-height:1.6;">
+      If the button doesn't work, copy the email address above into your email client.
+    </p>
+    <hr style="border:none;border-top:1px solid #e8e4dc;margin:32px 0;">
+    <p style="font-size:12px;color:#ccc;line-height:1.8;margin:0;">
+      Communication happens in your own email. fata is just an introduction tool.<br>
+      <a href="https://fata.uk" style="color:#bbb;">Write another on fata</a>
+      &middot;
+      <a href="https://worker.fata.uk/unsubscribe?h=${encodeURIComponent(person.emailHash || '')}" style="color:#bbb;">Pause notifications</a>
+    </p>
+  </div>
+</body>
+</html>`;
+    }
+
+    // Chinese template (original)
     return `
 <!DOCTYPE html>
 <html>

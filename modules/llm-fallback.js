@@ -113,8 +113,9 @@ const LLMFallback = {
     this._showStatus(t('model.statusAnalyzing'));
 
     const llmResult = await this.callWithTimeout('/api/llm/analyze', {
-      prompt: 'intent_parse',
-      text: userText
+      prompt_type: 'intent_parse',
+      text_a: userText,
+      lang: (typeof window !== 'undefined' && window.currentLang) || 'zh'
     });
 
     if (llmResult !== null) {
@@ -175,11 +176,34 @@ const LLMFallback = {
     if (window.MatchEngine && window.MatchEngine._generateEmbedding) {
       return window.MatchEngine._generateEmbedding(text);
     }
-    // MatchEngine 未初始化时用简单字符 bigram 向量
+    // MatchEngine 未初始化时降级生成向量（语言感知）
+    const lang = (typeof window !== 'undefined' && window.currentLang) || 'zh';
+    const dim = lang === 'en' ? 384 : 512;
+    if (lang === 'en') {
+      // English: word-bigram（与 match-engine.js _wordBigramVector 一致）
+      const words = (text || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 0);
+      if (words.length < 2) words.push('.');
+      const bigrams = {};
+      for (let i = 0; i < words.length - 1; i++) {
+        const bg = words[i] + '_' + words[i + 1];
+        bigrams[bg] = (bigrams[bg] || 0) + 1;
+      }
+      const total = Object.values(bigrams).reduce((a, b) => a + b, 0) || 1;
+      const vec = new Array(dim).fill(0);
+      for (const [bg, cnt] of Object.entries(bigrams)) {
+        let h = 0;
+        for (let i = 0; i < bg.length; i++) h = ((h << 5) - h + bg.charCodeAt(i)) | 0;
+        vec[Math.abs(h) % dim] += cnt / total;
+      }
+      const norm = Math.sqrt(vec.reduce((a, b) => a + b * b, 0));
+      if (norm > 0) vec.forEach((_, i) => vec[i] /= norm);
+      return vec;
+    }
+    // Chinese: char bigram（原始行为）
     const chars = (text || '').replace(/\s+/g, '').split('');
-    const vec = new Array(512).fill(0);
+    const vec = new Array(dim).fill(0);
     for (let i = 0; i < chars.length - 1; i++) {
-      const h = ((chars[i] + chars[i + 1]).split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 0)) % 512;
+      const h = ((chars[i] + chars[i + 1]).split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 0)) % dim;
       vec[Math.abs(h)] += 1 / (chars.length || 1);
     }
     const norm = Math.sqrt(vec.reduce((a, b) => a + b * b, 0));

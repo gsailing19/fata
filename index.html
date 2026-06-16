@@ -1279,7 +1279,8 @@ body {
     // Step 1: 信号密度评分 + 安全检测
     const signalResult = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
       prompt_type: 'signal_density',
-      text_a: text
+      text_a: text,
+      lang: currentLang
     }, HMAC_KEY_RAW);
 
     // Step 2: 安全检测
@@ -1368,7 +1369,8 @@ body {
         try {
           const intentResult = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
             prompt_type: 'intent_parse',
-            text_a: text
+            text_a: text,
+            lang: currentLang
           }, HMAC_KEY_RAW);
           if (intentResult) {
             intentProfile = intentResult;
@@ -1463,7 +1465,8 @@ body {
                 emailHash: emailHashB
               },
               resonance: resonance.resonance,
-              icebreakers: resonance.questions
+              icebreakers: resonance.questions,
+              lang: currentLang
             }, finalNum)
           );
         }).catch(e => {
@@ -1597,7 +1600,8 @@ body {
     const result = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
       prompt_type: 'resonance',
       text_a: textA,
-      text_b: textB
+      text_b: textB,
+      lang: currentLang
     }, HMAC_KEY_RAW);
     return result || {
       resonance: t('match.resonanceFallback'),
@@ -1866,7 +1870,8 @@ body {
           const allAnswers = answers.join('；');
           const result = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
             prompt_type: 'interview_compose',
-            text_a: allAnswers
+            text_a: allAnswers,
+            lang: currentLang
           }, HMAC_KEY_RAW);
 
           const profile = (result && result.profile) || t('interview.composeFallback');
