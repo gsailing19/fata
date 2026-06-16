@@ -1,1 +1,7 @@
 /api/*  https://worker.fata.uk/api/:splat  200
+
+# Block sensitive paths from old deployments (redirect to homepage)
+/config/*  /  301
+/tools/*   /  301
+/assets/*  /  301
+/*.md      /  301

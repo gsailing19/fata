@@ -57,12 +57,20 @@ Icon
 # --- Playwright automation ---
 .playwright-mcp/
 
-# --- 临时文件 ---
+# --- 内部工具（不对外暴露） ---
 *.local.*
 tools/e2e-test.js
 tools/audit.js
 tools/audit-logs/
 tools/algo-test.js
 tools/algo-test-logs/
+tools/evaluate-matching.js
+tools/inject-en-seeds.js
+tools/seed-injector.html
+tools/seed-injector-en.html
 config/test-pairs.json
+config/scenario-tests.json
 分发.md
+
+# --- 构建产物 ---
+dist/
