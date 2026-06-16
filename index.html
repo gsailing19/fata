@@ -584,6 +584,7 @@ body {
       'returning.newText': '写一段新的',
 
       'waiting.feeling': '正在感受你的文字...',
+      'waiting.addingToPool': '正在将你的文字放入匹配池...',
       'waiting.comparing': '正在将你的频率和池子里的文字进行对比...',
 
       'match.resonanceFallback': '你们在此刻的频率很接近。',
@@ -723,6 +724,7 @@ body {
       'returning.newText': 'Write something new',
 
       'waiting.feeling': 'Feeling your words...',
+      'waiting.addingToPool': 'Adding your words to the pool...',
       'waiting.comparing': 'Comparing your frequency with the pool...',
 
       'match.resonanceFallback': 'Your frequencies are close right now.',
@@ -944,8 +946,8 @@ body {
   function renderModelLoading() {
     document.getElementById('app').innerHTML = `
       <div class="model-loading">
-        <p class="waiting-text">正在准备文字引擎...</p>
-        <p class="waiting-sub" style="font-size:12px;color:var(--text-whisper);">Preparing the word engine...</p>
+        <p class="waiting-text">${t('loading.preparing')}</p>
+        <p class="waiting-sub" style="font-size:12px;color:var(--text-whisper);">${t('loading.preparing') === '正在准备文字引擎...' ? 'Preparing the word engine...' : '正在准备文字引擎...'}</p>
         <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
         <p class="waiting-sub progress-text"></p>
       </div>
@@ -1258,7 +1260,7 @@ body {
 
   async function executeMatch(text, email, signalResult) {
     try {
-      showWaiting('正在感受你的文字...');
+      showWaiting(t('waiting.feeling'));
 
       // 意图解析（深度匹配模式）
       let intentProfile = null;
@@ -1277,7 +1279,7 @@ body {
       }
 
       // Step A: 用户文字入匹配池
-      showWaiting('正在将你的文字放入匹配池...');
+      showWaiting(t('waiting.addingToPool'));
       let userIssue;
       try {
         userIssue = await createPendingIssue(text, email, intentProfile);
@@ -1286,7 +1288,7 @@ body {
       }
 
       // Step B: 在池中寻找匹配
-      showWaiting('正在将你的频率和池子里的文字进行对比...');
+      showWaiting(t('waiting.comparing'));
 
       const snippet = text.length > 80 ? text.slice(0, 80) : text;
       const emailHash = await sha256(email);
@@ -1968,6 +1970,9 @@ body {
 
   function formatDate(ts) {
     const d = new Date(ts);
+    if (currentLang === 'en') {
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
     return `${d.getMonth() + 1}月${d.getDate()}日`;
   }
 
