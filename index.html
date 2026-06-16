@@ -3,15 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>fata</title>
+<title>fata — write, get matched by emotional frequency, talk in email</title>
 
 <!-- favicon -->
 <link rel="icon" type="image/svg+xml" href="/logo/logo.svg">
 <link rel="apple-touch-icon" href="/logo/logo-unified-v2.png">
 
+<meta name="description" content="Open fata.uk, write a few lines. AI reads your emotional frequency in your browser, finds a stranger who resonates. No app. No signup. No server. Communication happens in your own email.">
+
 <!-- OG tags for social sharing -->
-<meta property="og:title" content="fata">
-<meta property="og:description" content="">
+<meta property="og:title" content="fata — write, get matched by emotional frequency">
+<meta property="og:description" content="Write a few lines. AI reads your emotional frequency. Find a stranger who resonates. No app. No signup. No server. Talk in your own email.">
 <meta property="og:url" content="https://fata.uk">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://fata.uk/logo/logo-unified-v2.png">
@@ -84,7 +86,7 @@ body {
 /* ===== 首页 ===== */
 .landing {
   display: flex; flex-direction: column; align-items: center;
-  padding-top: 100px; text-align: center;
+  padding-top: 40px; text-align: center;
 }
 .landing-title {
   font-family: var(--font-serif);
@@ -92,11 +94,11 @@ body {
   margin-bottom: 12px; line-height: 1.3;
   letter-spacing: -0.015em; text-wrap: balance;
 }
-.landing-logo { margin-bottom: 28px; opacity: 0.85; }
+.landing-logo { margin-bottom: 16px; opacity: 0.85; }
 .landing-logo svg { display: block; }
 .landing-wave-line {
   display: block; width: 120px; height: 24px;
-  margin: 0 auto 48px; opacity: 0.45;
+  margin: 0 auto 28px; opacity: 0.45;
 }
 .landing-wave-line svg { display: block; }
 .landing-editor {
@@ -123,7 +125,7 @@ body {
 /* 起笔提示 */
 .writing-prompts {
   display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
-  margin-bottom: 28px; max-width: 480px;
+  margin-bottom: 16px; max-width: 480px;
 }
 .writing-prompt {
   font-size: 13px; color: var(--text-subtle); padding: 7px 16px;
@@ -154,11 +156,48 @@ body {
 
 /* 隐私选择行 */
 .privacy-options {
-  display: flex; gap: 28px; justify-content: center; margin-bottom: 28px;
+  display: flex; gap: 28px; justify-content: center; margin-bottom: 20px;
   font-size: 13px; color: var(--text-subtle);
 }
 .privacy-options label { cursor: pointer; display: flex; align-items: center; gap: 6px; }
-.privacy-options input[type=checkbox] { accent-color: var(--warm); }
+.privacy-options input[type=checkbox] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px; height: 20px;
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-card);
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.25s var(--spring);
+  margin: 0;
+}
+.privacy-options input[type=checkbox]:checked {
+  background: var(--warm);
+  border-color: var(--warm);
+}
+.privacy-options input[type=checkbox]::after {
+  content: '';
+  position: absolute;
+  left: 5.5px; top: 2px;
+  width: 6px; height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.2s var(--spring);
+  opacity: 0;
+}
+.privacy-options input[type=checkbox]:checked::after {
+  transform: rotate(45deg) scale(1);
+  opacity: 1;
+}
+.privacy-options input[type=checkbox]:hover {
+  border-color: var(--warm);
+}
+.privacy-options input[type=checkbox]:active {
+  transform: scale(0.92);
+}
 
 
 
@@ -273,13 +312,27 @@ body {
 .wave-sep svg { display: block; }
 
 .other-text-block {
-  border-left: 2px solid rgba(196,122,74,0.3); padding-left: 18px;
+  position: relative;
+  padding: 20px 24px 20px 48px;
   margin-bottom: 28px;
+  background: var(--warm-ghost);
+  border-radius: var(--radius);
+  border-left: 3px solid rgba(196,122,74,0.35);
+  animation: fadeInUp 0.6s var(--spring) 0.2s both;
 }
-.other-text-label { font-size: 13px; color: var(--text-whisper); margin-bottom: 10px; }
+.other-text-block::before {
+  content: '\201C';
+  position: absolute;
+  left: 16px; top: 10px;
+  font-family: var(--font-serif); font-size: 42px;
+  color: rgba(196,122,74,0.2);
+  line-height: 1;
+  pointer-events: none;
+}
+.other-text-label { font-size: 13px; color: var(--text-whisper); margin-bottom: 8px; font-family: var(--font-sans); }
 .other-text-content {
   font-family: var(--font-serif); font-size: 15px; font-style: italic;
-  color: var(--text-subtle); line-height: 1.9;
+  color: var(--text); line-height: 1.9;
 }
 
 .email-block {
@@ -466,15 +519,18 @@ body {
 /* ===== 移动端适配 ===== */
 @media (max-width: 414px) {
   .page { padding: 40px 18px 80px; }
-  .landing { padding-top: 60px; }
+  .landing { padding-top: 30px; }
+  .landing-logo { margin-bottom: 12px; }
   .landing-title { font-size: 22px; }
   .resonance-block { font-size: 17px; }
   .email-address { font-size: 16px; }
   .actions-row { flex-direction: column; align-items: center; }
   .resonance-rings { width: 100px; height: 100px; }
-  .landing-wave-line { width: 80px; height: 18px; }
-  .privacy-options { flex-direction: column; gap: 12px; }
+  .landing-wave-line { width: 80px; height: 18px; margin-bottom: 20px; }
+  .writing-prompts { margin-bottom: 12px; }
+  .privacy-options { flex-direction: column; gap: 12px; margin-bottom: 16px; }
   .btn-deliver { padding: 14px 40px; font-size: 15px; }
+  .landing-editor textarea { min-height: 140px; }
 }
 
 /* --- 邮箱输入弹窗 --- */
@@ -892,6 +948,7 @@ body {
     intentProfile: null,       // LLM 意图解析结果
     matchMode: 'deep',         // 'deep' | 'fast'
     showTextToMatch: true,     // 是否允许展示文字给对方
+    allowSnippet: true,        // 是否允许匿名展示文字片段
     isReturningUser: false,    // 是否为回访用户
     modelStatus: 'idle',       // 'idle' | 'loading' | 'ready' | 'fallback'
     pendingTexts: [],          // 历史文字列表
@@ -956,6 +1013,16 @@ body {
       // 在降级模式下初始化（使用 TF-IDF）
       // 不加载 Transformers.js pipeline，走字符 bigram + 余弦相似度降级
       await MatchEngine.initialize({ mode: 'fallback' });
+    }
+
+    // 初始化回声片段池（匿名展示用）
+    if (!sessionStorage.getItem('fata_echo_pool')) {
+      const defaults = [
+        t('snippet.default1'),
+        t('snippet.default2'),
+        t('snippet.default3'),
+      ];
+      sessionStorage.setItem('fata_echo_pool', JSON.stringify(defaults));
     }
 
     // 渲染首页
@@ -1083,7 +1150,7 @@ body {
 
         <button class="btn-deliver" id="btn-deliver">${t('landing.deliver')}</button>
 
-        <div style="width:200px;height:1px;background:linear-gradient(to right,transparent,rgba(196,122,74,0.25),transparent);margin:24px auto 0;"></div>
+        <div style="width:200px;height:1px;background:linear-gradient(to right,transparent,rgba(196,122,74,0.25),transparent);margin:18px auto 0;"></div>
       </div>
     `;
 
@@ -1160,9 +1227,20 @@ body {
     document.getElementById('show-text-check').addEventListener('change', e => {
       state.showTextToMatch = e.target.checked;
     });
+    document.getElementById('allow-snippet-check').addEventListener('change', e => {
+      state.allowSnippet = e.target.checked;
+    });
 
     // 字数提示
     textarea.addEventListener('input', updateLengthHint);
+
+    // 快捷键投递
+    textarea.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleDeliver();
+      }
+    });
 
     // 投递
     document.getElementById('btn-deliver').addEventListener('click', handleDeliver);
@@ -1254,6 +1332,7 @@ body {
       m: emailEncrypted,
       h: emailHash,
       text_snippet: snippet,
+      allow_snippet: state.allowSnippet,
       ...(intentProfile ? { i: await encryptData(intentProfile) } : {})
     });
 
@@ -1403,6 +1482,9 @@ body {
           timestamp: Date.now(),
           issueNumber: userIssue.issueNumber
         });
+        if (state.allowSnippet) {
+          addToEchoPool(text.length > 80 ? text.slice(0, 80) + '...' : text);
+        }
         showNoMatch(matchResult);
       }
     } catch (err) {
@@ -1575,7 +1657,12 @@ body {
         <div class="other-text-block">
           <div class="other-text-label">${t('match.otherWrote')}</div>
           <div class="other-text-content">"${escapeHTML(matchInfo.otherText)}"</div>
-        </div>` : ''}
+        </div>` : `
+        <p style="text-align:center;font-size:13px;color:var(--text-whisper);margin-bottom:24px;font-style:italic;animation:fadeInUp 0.6s var(--spring) 0.2s both;">
+          ${currentLang === 'zh'
+            ? '因为你没有选择展示文字，对方的文字也不会展示给你。这是双向的。'
+            : 'Because you chose not to show your text, their text is also hidden from you. It works both ways.'}
+        </p>`}
 
         <div class="email-block">
           <div class="email-label">${t('match.emailLabel')}</div>
@@ -1980,7 +2067,31 @@ body {
 
 
   function getEchoSnippet() {
+    const pool = getEchoPool();
+    if (pool.length > 0) {
+      const idx = Math.floor(Math.random() * pool.length);
+      return pool[idx];
+    }
     return t('echo.fallback');
+  }
+
+  function getEchoPool() {
+    try {
+      return JSON.parse(sessionStorage.getItem('fata_echo_pool') || '[]');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function addToEchoPool(snippet) {
+    try {
+      const pool = getEchoPool();
+      if (!pool.includes(snippet)) {
+        pool.push(snippet);
+        if (pool.length > 20) pool.shift();
+        sessionStorage.setItem('fata_echo_pool', JSON.stringify(pool));
+      }
+    } catch (e) { /* ignore */ }
   }
 
   function getNextInterviewQuestion(userText, round) {
