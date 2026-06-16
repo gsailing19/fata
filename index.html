@@ -930,6 +930,8 @@ body {
     currentLang = lang;
     localStorage.setItem('fata_lang', lang);
     document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+    // 清除回声池，让新语言重新初始化默认片段
+    sessionStorage.removeItem('fata_echo_pool');
     // Update OG tags
     document.title = t('app.title');
     document.querySelector('meta[property="og:title"]')?.setAttribute('content', t('app.ogTitle'));
@@ -1018,9 +1020,9 @@ body {
     // 初始化回声片段池（匿名展示用）
     if (!sessionStorage.getItem('fata_echo_pool')) {
       const defaults = [
-        t('snippet.default1'),
-        t('snippet.default2'),
-        t('snippet.default3'),
+        { text: t('snippet.default1'), lang: currentLang },
+        { text: t('snippet.default2'), lang: currentLang },
+        { text: t('snippet.default3'), lang: currentLang },
       ];
       sessionStorage.setItem('fata_echo_pool', JSON.stringify(defaults));
     }
@@ -1030,8 +1032,10 @@ body {
   }
 
   function onModelProgress(pct, text) {
-    document.querySelector('.progress-fill').style.width = pct + '%';
-    document.querySelector('.progress-text').textContent = text;
+    const fill = document.querySelector('.progress-fill');
+    const txt = document.querySelector('.progress-text');
+    if (fill) fill.style.width = pct + '%';
+    if (txt) txt.textContent = text;
   }
 
   // ===== 页面渲染 =====
@@ -1328,6 +1332,7 @@ body {
     const snippet = text.length > 80 ? text.slice(0, 80) : text;
 
     const body = JSON.stringify({
+      l: currentLang,
       e: embEncrypted,
       m: emailEncrypted,
       h: emailHash,
@@ -2068,9 +2073,13 @@ body {
 
   function getEchoSnippet() {
     const pool = getEchoPool();
-    if (pool.length > 0) {
-      const idx = Math.floor(Math.random() * pool.length);
-      return pool[idx];
+    // 按当前语言过滤（仅包含有语言标签的新格式条目）
+    const langPool = pool.filter(e => e && e.lang === currentLang);
+    const candidates = langPool.length > 0 ? langPool : pool;
+    if (candidates.length > 0) {
+      const idx = Math.floor(Math.random() * candidates.length);
+      const entry = candidates[idx];
+      return typeof entry === 'string' ? entry : entry.text;
     }
     return t('echo.fallback');
   }
@@ -2086,8 +2095,10 @@ body {
   function addToEchoPool(snippet) {
     try {
       const pool = getEchoPool();
-      if (!pool.includes(snippet)) {
-        pool.push(snippet);
+      // 统一迁移为 { text, lang } 格式
+      const entry = { text: snippet, lang: currentLang };
+      if (!pool.some(e => (typeof e === 'string' ? e : e.text) === snippet)) {
+        pool.push(entry);
         if (pool.length > 20) pool.shift();
         sessionStorage.setItem('fata_echo_pool', JSON.stringify(pool));
       }
