@@ -1278,6 +1278,11 @@ body {
         }
       }
 
+      // 将 signalDensity 合并到 intentProfile 中（Worker 评分引擎需要）
+      if (intentProfile && signalResult && typeof signalResult.score === 'number') {
+        intentProfile.signalDensity = signalResult.score;
+      }
+
       // Step A: 用户文字入匹配池
       showWaiting(t('waiting.addingToPool'));
       let userIssue;

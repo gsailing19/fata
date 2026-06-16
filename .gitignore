@@ -62,3 +62,7 @@ Icon
 tools/e2e-test.js
 tools/audit.js
 tools/audit-logs/
+tools/algo-test.js
+tools/algo-test-logs/
+config/test-pairs.json
+分发.md
