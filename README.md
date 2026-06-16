@@ -25,7 +25,7 @@ fata 是一个开源的无服务器陌生人匹配工具。写一段话，浏览
 **fata *cannot* read your conversations — not "promises not to", it's technically incapable.**
 
 - **Your words never leave your browser.** The AI model (Transformers.js + bge-small-zh-v1.5, 24MB) runs entirely locally. See `modules/model-loader.js`
-- **The matching pool is public GitHub Issues.** Your encrypted text waits in an Issue. When matched, the Issue closes. Like a padlocked box on a public bulletin board. See `config/github-setup.md`
+- **The matching pool is public GitHub Issues.** Your encrypted text waits in an Issue. When matched, the Issue closes. Like a padlocked box on a public bulletin board — and the padlock key never leaves the server. See `config/github-setup.md`
 - **High-risk text never enters the pool.** When AI detects self-harm signals, fata creates no Issue, makes no match, keeps no record — only shows support resources. See `modules/safety-handler.js`
 - **Communication happens in your own email.** fata sends only one notification (via Resend). After that, you talk in your email client. fata sees none of it. See `modules/resend-retry.js`
 - **No servers. No database. No chat history.** fata is a static HTML file + one CF Worker proxy. There's nothing to hack, no chat logs to subpoena.
@@ -49,7 +49,7 @@ fata 是一个开源的无服务器陌生人匹配工具。写一段话，浏览
 | Layer | Tech | Runs on |
 |---|------|---------|
 | AI inference | Transformers.js + bge-small-zh-v1.5 (24MB) | Browser (local) |
-| Vector search | Orama | Browser (local) |
+| Matching engine | Multi-channel scoring + MMR re-rank | CF Worker |
 | Matching pool | GitHub Issues API | CF Worker proxy |
 | Intent parsing | LLM API (optional, opt-in deep match) | CF Worker proxy |
 | Email notification | Resend | CF Worker proxy |
@@ -88,29 +88,26 @@ cp config/algorithm-config.example.json config/algorithm-config.json
 wrangler secret put GITHUB_PAT
 wrangler secret put DEEPSEEK_API_KEY
 wrangler secret put RESEND_API_KEY
-wrangler secret put HMAC_SECRET
+wrangler secret put HMAC_KEY
+wrangler secret put ENCRYPTION_KEY
 
 # Deploy
-wrangler deploy
+cd config && npx wrangler deploy
 ```
 
 ### 4. Deploy frontend
 
-Deploy these files to Cloudflare Pages / GitHub Pages / any static host:
+```bash
+./deploy.sh
+```
+
+This copies only public files to `dist/` and deploys to Cloudflare Pages. The full list:
 
 ```
-index.html
-privacy.html
-privacy-en.html
-modules/model-loader.js
-modules/safety-handler.js
-modules/llm-fallback.js
-modules/resend-retry.js
-modules/low-signal-guide.js
-modules/match-engine.js
-config/algorithm-config.json
-logo/logo.svg
-manifest.json
+index.html  privacy.html  privacy-en.html
+modules/*.js  (6 files: model-loader, safety-handler, llm-fallback, resend-retry, low-signal-guide, match-engine)
+logo/logo.svg  logo/logo-unified-v2.png  logo/logo-horizontal.svg
+manifest.json  _redirects  _headers
 ```
 
 ---
