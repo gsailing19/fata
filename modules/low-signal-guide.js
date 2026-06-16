@@ -136,9 +136,10 @@ const LowSignalGuide = {
    * 展示最近匿名写作片段（降低"不知道写什么"的焦虑）
    */
   _getRecentSnippetsHTML() {
+    const t = window.t || (k => k);
     return `
       <div class="recent-snippets">
-        <p class="snippets-label">最近有人在写——</p>
+        <p class="snippets-label">${t('snippets.label')}</p>
         <div class="snippets-list" id="writing-snippets">
           <!-- 动态填充 LLM 生成的写作启-发片段 -->
         </div>

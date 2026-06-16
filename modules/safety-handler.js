@@ -99,18 +99,27 @@ const SafetyHandler = {
   localCheck(text) {
     const t = text || '';
 
-    // 高危自伤关键词（中文常见表达）
+    // 高危自伤关键词（中英文）
     const selfHarmPatterns = [
+      // 中文
       /想死/, /不想活/, /自杀/, /结束生命/, /活不下去/,
       /自残/, /割腕/, /跳楼/, /上吊/, /安眠药/,
       /没有意义.*活着/, /活着.*没有意义/, /不如死/,
-      /不想.*醒过来/, /永远.*睡过去/, /离开这个世界/
+      /不想.*醒过来/, /永远.*睡过去/, /离开这个世界/,
+      // English
+      /kill myself/i, /end my life/i, /suicide/i, /self-harm/i,
+      /want to die/i, /don't want to live/i, /better off dead/i,
+      /end it all/i, /can't go on/i, /no reason to live/i
     ];
 
-    // 仇恨/骚扰关键词
+    // 仇恨/骚扰关键词（中英文）
     const hatePatterns = [
+      // 中文
       /杀光/, /灭掉/, /弄死.*人/, /暴力/, /殴打/,
-      /人肉/, /曝光.*隐私/, /报复/
+      /人肉/, /曝光.*隐私/, /报复/,
+      // English
+      /kill all/i, /exterminate/i, /dox/i, /doxx/i,
+      /death threat/i, /hate crime/i
     ];
 
     for (const p of selfHarmPatterns) {
@@ -201,11 +210,12 @@ const SafetyHandler = {
    * 获取页面底部常驻的心理援助资源（所有用户可见）
    */
   getFooterResourcesHTML() {
+    const t = window.t || (k => k);
+    const crisis = t('footer.crisis');
+    if (!crisis) return '';
     return `
       <div class="footer-resources">
-        <span class="footer-resources-label">需要找人聊聊？</span>
-        <span class="footer-resources-phone">北京心理援助热线 010-82951332 · 生命热线 400-161-9995</span>
-        <span class="footer-resources-note">24小时 · 免费 · 匿名</span>
+        <span class="footer-resources-label">${crisis}</span>
       </div>
     `;
   },

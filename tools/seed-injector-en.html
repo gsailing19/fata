@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>fata English Seed Injector</title>
+<style>
+  body { font-family: system-ui; max-width: 720px; margin: 40px auto; padding: 20px; background: #faf9f6; color: #333; }
+  h1 { font-size: 20px; font-weight: 400; }
+  p { color: #666; font-size: 14px; line-height: 1.6; }
+  button { padding: 12px 28px; font-size: 15px; cursor: pointer; background: #2a2a2a; color: #fff; border: none; border-radius: 4px; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .log { margin-top: 20px; background: #fff; border-radius: 4px; padding: 16px; font-size: 13px; font-family: monospace; max-height: 400px; overflow-y: auto; }
+  .log .ok { color: #2a7d2a; }
+  .log .err { color: #c42b2b; }
+</style>
+</head>
+<body>
+<h1>fata English Seed Text Injector</h1>
+<p>Inject 50 English seed texts into the matching pool via the Worker API.<br>
+Each text is AES-GCM encrypted and labeled <code>seed</code> + <code>pending</code>.</p>
+<p><strong>Model:</strong> bge-small-en-v1.5 (384-dim) &nbsp;|&nbsp; <strong>Language:</strong> en</p>
+<button id="startBtn" onclick="startInjection()">Inject 50 English Seed Texts</button>
+<div id="log" class="log"></div>
+
+<script type="module">
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js';
+
+const WORKER = 'https://worker.fata.uk';
+const MODEL = 'Xenova/bge-small-en-v1.5';
+const DIM = 384;
+const LANG = 'en';
+
+const SEEDS = [
+  // Loneliness (5)
+  "I deleted all my dating apps last week and now I don't know how to meet anyone. It feels like everyone already has their people and I missed the window.",
+  "Sometimes I go entire weekends without speaking to another person. Not because I want to, but because I don't know how to reach out anymore.",
+  "I have hundreds of friends online but not one person I could call at 3am when I can't sleep and everything feels heavy.",
+  "Being alone and being lonely are different things. I'm good at being alone. I'm not good at being lonely. Does that make sense?",
+  "I moved to a new city six months ago and I still know exactly zero people here outside of work. How do adults even make friends?",
+
+  // Burnout (5)
+  "My therapist suggested I write more, so here I am. I'm not sure what to say. I've been running on empty for so long I forgot what full feels like.",
+  "I keep telling everyone I'm fine but the truth is I'm exhausted in a way sleep can't fix. It's like my soul is tired.",
+  "Work has been consuming everything. I wake up, work, eat at my desk, work more, collapse into bed. Rinse and repeat. When did my life become this?",
+  "I took a mental health day today. Didn't tell anyone. Just sat in a park and watched dogs. It was the most peaceful I've felt in months.",
+  "I used to be passionate about my career. Now I just feel numb. I don't know if it's the job or me or both.",
+
+  // Existential questioning (5)
+  "Sometimes I lie awake at 3am wondering if this is all there is. Wake up, work, eat, sleep, repeat. What's the point of any of it?",
+  "I turned 30 last month and I feel like I'm supposed to have figured something out by now. But I haven't. I feel more lost than ever.",
+  "Do you ever feel like you're watching your life from the outside? Like you're not really in it, just going through the motions?",
+  "I keep thinking about the version of me that took the other path. The one who didn't play it safe. I wonder if she's happier.",
+  "What if the life I'm living isn't the one I'm supposed to be living? What if I made a wrong turn somewhere and didn't notice?",
+
+  // Creative longing (5)
+  "I started learning piano at 32. My fingers don't do what I want them to do, but it's the first thing I've done just for myself in years.",
+  "I used to write poetry in college. I found an old notebook yesterday and it made me cry. Not because it was good, but because I recognized that person.",
+  "There's this painting I've been wanting to start for three years. The canvas is still blank. I'm scared it won't look the way I imagine it.",
+  "I bought watercolors last weekend. I have no idea what I'm doing but for an hour I forgot about everything else. That felt like something.",
+  "Sometimes I think my real self is buried under layers of being practical and responsible. I want to dig her out but I don't know how.",
+
+  // Friendship drift (5)
+  "All my friends are getting married and having kids and I feel like I'm on a completely different planet. I'm happy for them but I miss them.",
+  "I realized today that I haven't seen my best friend in two years. We still text but it's not the same. When did we become strangers?",
+  "I'm always the one who reaches out first. Always. If I stopped texting, I wonder how many people would notice. I'm scared to find out.",
+  "There's this specific kind of loneliness that comes from being surrounded by people who don't really know you. It's almost worse than being alone.",
+  "I miss having someone who just gets it without me having to explain. The kind of friend where silence isn't awkward.",
+
+  // Heartbreak (5)
+  "It's been four months and I still check my phone hoping it's them. I know it won't be. I check anyway. When does this stop?",
+  "We weren't even together that long. So why does it still hurt? Why do I still think about them every single day?",
+  "I saw them with someone new today. I smiled and said hi like everything was fine. Then I cried in my car for twenty minutes.",
+  "The hardest part isn't missing them. It's missing the version of myself I was when I was with them. I liked that person better.",
+  "I think I'm finally ready to let someone in again. Not to replace what I lost, but to build something new. That feels like progress.",
+
+  // Daily small things (5)
+  "I saw an old man feeding pigeons in the park today. He was talking to them like they were old friends. It made me cry for no reason.",
+  "There's a coffee shop I go to every Sunday. The barista knows my order now. That tiny recognition is the highlight of my week.",
+  "I found a four-leaf clover today. I don't believe in luck but I pressed it in a book anyway. Just in case.",
+  "The light this morning was incredible. Golden and soft, like the world had been dipped in honey. I stood at my window for ten minutes just watching.",
+  "I cooked myself a real meal tonight for the first time in weeks. Nothing fancy, just pasta. But I used the good olive oil. I think that counts for something.",
+
+  // Self-discovery (5)
+  "I quit my job three weeks ago. I don't have a plan. Everyone thinks I'm crazy. But for the first time in years, I feel free.",
+  "I've been in therapy for six months now. Yesterday I caught myself setting a boundary without apologizing. I almost didn't recognize myself.",
+  "I'm trying to figure out who I am when I'm not performing for anyone. No audience, no expectations, no resume. Just me. It's harder than I thought.",
+  "Someone asked me what I like to do for fun and I didn't have an answer. That scared me. I've been so busy being productive I forgot how to play.",
+  "I said no to something I didn't want to do today. It was such a small thing but it felt enormous. I'm learning that my time matters.",
+
+  // Quiet hope (5)
+  "I think maybe I'm ready to let someone in again. Not because I'm lonely, but because I have something to share now. That feels different.",
+  "Spring is coming. I know it's just a season but it feels like a promise. Like maybe things can change. Like maybe I can change.",
+  "There's this tiny plant on my windowsill that I've been keeping alive for three months. If I can do that, maybe I can do other things too.",
+  "I had a genuinely good day today. Nothing special happened. I just felt okay. That's the first time I've said that in a while.",
+  "I'm starting to believe that the best things happen slowly. That connection isn't something you force, it's something you make space for. I'm making space."
+];
+
+let encoder, hmacKey, pipe;
+
+async function init() {
+  log('Loading ' + MODEL + '...');
+  pipe = await pipeline('feature-extraction', MODEL);
+  log('Model ready.', 'ok');
+  log('Fetching HMAC key...');
+  const resp = await fetch(WORKER + '/api/hmac-key');
+  const data = await resp.json();
+  hmacKey = data.hmac_key;
+  if (!hmacKey) { log('HMAC key empty!', 'err'); return false; }
+  log('HMAC key ready.', 'ok');
+  encoder = new TextEncoder();
+  return true;
+}
+
+async function encryptAES(plaintext) {
+  const keyBytes = encoder.encode(hmacKey).slice(0, 32);
+  const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = encoder.encode(plaintext);
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function generateEmbedding(text) {
+  const output = await pipe(text, { pooling: 'mean', normalize: true });
+  return Array.from(output.data);
+}
+
+async function signRequest(endpoint) {
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const msg = ts + ':' + endpoint;
+  const keyData = encoder.encode(hmacKey);
+  const key = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(msg));
+  return {
+    'X-Fata-Signature': btoa(String.fromCharCode(...new Uint8Array(sig))),
+    'X-Fata-Timestamp': ts
+  };
+}
+
+async function createSeedIssue(text) {
+  const emb = await generateEmbedding(text);
+  const embEncrypted = await encryptAES(JSON.stringify(emb));
+  const emailEncrypted = await encryptAES('seed@fata.uk');
+  const body = JSON.stringify({ e: embEncrypted, m: emailEncrypted, h: '', text_snippet: text.slice(0, 80), lang: LANG });
+  const endpoint = '/api/github/issues';
+  const headers = { 'Content-Type': 'application/json', ...(await signRequest(endpoint)) };
+  const resp = await fetch(WORKER + endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ title: '[Seed EN] ' + text.slice(0, 40), body, labels: ['seed', 'pending'] })
+  });
+  return resp.ok;
+}
+
+function log(msg, cls) {
+  const el = document.getElementById('log');
+  el.innerHTML += `<span class="${cls || ''}">${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+async function startInjection() {
+  document.getElementById('startBtn').disabled = true;
+  log('--- Starting English seed injection ---');
+  if (!(await init())) return;
+
+  let ok = 0, fail = 0;
+  for (let i = 0; i < SEEDS.length; i++) {
+    log(`[${i + 1}/${SEEDS.length}] ${SEEDS[i].slice(0, 50)}...`);
+    try {
+      if (await createSeedIssue(SEEDS[i])) { ok++; log('  OK', 'ok'); }
+      else { fail++; log('  Failed', 'err'); }
+    } catch (e) { fail++; log('  Error: ' + e.message, 'err'); }
+    await new Promise(r => setTimeout(r, 800));
+  }
+
+  log(`\nDone. ${ok} OK, ${fail} failed.`);
+  document.getElementById('startBtn').disabled = false;
+}
+
+window.startInjection = startInjection;
+</script>
+</body>
+</html>

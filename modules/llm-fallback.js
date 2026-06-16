@@ -108,8 +108,9 @@ const LLMFallback = {
    * @returns {Object} — 匹配结果
    */
   async matchWithFallback(userText, userEmail) {
+    const t = window.t || (k => k);
     // 尝试深度匹配（含 LLM 意图解析）
-    this._showStatus('正在深度分析你的文字...');
+    this._showStatus(t('model.statusAnalyzing'));
 
     const llmResult = await this.callWithTimeout('/api/llm/analyze', {
       prompt: 'intent_parse',
@@ -122,7 +123,7 @@ const LLMFallback = {
     }
 
     // 降级：纯本地 embedding 快速匹配
-    this._showStatus('正在为你快速匹配...');
+    this._showStatus(t('model.statusFastMatching'));
     this.state.consecutiveFallbacks++;
 
     const embedding = await this._generateEmbeddingLocal(userText);
@@ -143,16 +144,17 @@ const LLMFallback = {
    */
   getFallbackNotice() {
     if (this.state.consecutiveFallbacks === 0) return null;
+    const t = window.t || (k => k);
 
     if (this.state.consecutiveFallbacks >= this.config.maxConsecutiveFallbacks) {
       return {
         type: 'suggestion',
         html: `
           <p class="fallback-notice">
-            深度分析暂时繁忙。已为你切换到快速匹配——匹配精度不受影响。
+            ${t('fallback.busy')}
             <br>
             <button class="btn-text" onclick="fata.switchMatchMode('fast')">
-              切换到快速匹配模式（不需要等待 AI 分析）
+              ${t('fallback.switchBtn')}
             </button>
           </p>`
       };
@@ -162,7 +164,7 @@ const LLMFallback = {
       type: 'info',
       html: `
         <p class="fallback-notice-subtle">
-          已为你切换到快速匹配。匹配精度不受影响。
+          ${t('fallback.switched')}
         </p>`
     };
   },

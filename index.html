@@ -661,6 +661,19 @@ body {
       'signal.keepWriting': '再写一些',
       'signal.sendAnyway': '就这样投递',
 
+      'delete.tooltip': '撤回这段文字',
+      'delete.confirm': '确定撤回这段文字吗？它将从匹配池中移除。',
+      'delete.failed': '撤回失败，请稍后重试',
+
+      'error.network': '出了点问题',
+      'error.networkDesc': '网络不太稳定，匹配没完成。点下面重试一下就好。',
+      'error.retry': '重试',
+      'error.back': '返回',
+
+      'interview.enough': '差不多了',
+      'interview.sendAnyway': '就这样',
+      'interview.composeFallback': '我最近在...',
+
       'model.loadingAI': '正在加载 AI 引擎...',
       'model.downloading': '正在下载 AI 模型',
       'model.fallback': 'AI 模型加载失败，使用快速匹配模式',
@@ -791,7 +804,7 @@ body {
       'footer.github': 'GitHub',
       'footer.afdian': 'Support',
       'footer.feedback': 'Feedback & Help',
-      'footer.crisis': 'Need to talk? Crisis Lifeline (China) 010-82951332 · Lifeline 400-161-9995 · 24/7 · Free · Anonymous',
+      'footer.crisis': '',
       'footer.langSwitch': '中文',
 
       'init.error': 'fata is getting ready... If nothing happens for a while, please refresh the page.',
@@ -800,6 +813,19 @@ body {
       'signal.forceTitle': 'Send as-is?',
       'signal.keepWriting': 'Keep writing',
       'signal.sendAnyway': 'Send anyway',
+
+      'delete.tooltip': 'Withdraw',
+      'delete.confirm': 'Withdraw this text? It will be removed from the matching pool.',
+      'delete.failed': 'Withdraw failed, please try again later',
+
+      'error.network': 'Something went wrong',
+      'error.networkDesc': 'The network is unstable. Tap below to retry.',
+      'error.retry': 'Retry',
+      'error.back': 'Back',
+
+      'interview.enough': "That's enough",
+      'interview.sendAnyway': 'Send anyway',
+      'interview.composeFallback': "Lately I've been...",
 
       'model.loadingAI': 'Loading AI engine...',
       'model.downloading': 'Downloading AI model',
@@ -908,7 +934,7 @@ body {
 
     // 加载模型
     renderModelLoading();
-    const result = await ModelLoader.initialize(onModelProgress);
+    const result = await ModelLoader.initialize(onModelProgress, currentLang);
 
     // 从 Worker 获取 HMAC 密钥（存入 sessionStorage，仅本次会话有效）
     try {
@@ -947,7 +973,7 @@ body {
     document.getElementById('app').innerHTML = `
       <div class="model-loading">
         <p class="waiting-text">${t('loading.preparing')}</p>
-        <p class="waiting-sub" style="font-size:12px;color:var(--text-whisper);">${t('loading.preparing') === '正在准备文字引擎...' ? 'Preparing the word engine...' : '正在准备文字引擎...'}</p>
+        <p class="waiting-sub" style="font-size:12px;color:var(--text-whisper);">${t('loading.preparing')}</p>
         <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
         <p class="waiting-sub progress-text"></p>
       </div>
@@ -970,7 +996,7 @@ body {
     const sw = document.getElementById('lang-switch-top');
     const link = document.getElementById('lang-switch-link');
     sw.style.display = 'block';
-    link.textContent = currentLang === 'zh' ? 'English' : '中文';
+    link.textContent = t('footer.langSwitch');
     link.onclick = () => { window.setLanguage(currentLang === 'zh' ? 'en' : 'zh'); };
   }
 
@@ -1040,10 +1066,6 @@ body {
 
         <div class="length-hint" id="length-hint"></div>
 
-        <div class="interview-prompt">
-          <a href="#" id="interview-link">${t('landing.interviewLink')}</a>
-        </div>
-
         <div class="writing-prompts" id="writing-prompts">
           ${prompts.map(p => `<button class="writing-prompt" data-text="${p.text}">${p.text}</button>`).join('')}
         </div>
@@ -1081,7 +1103,7 @@ body {
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
           <span class="text-history-status status-${t.status}">${statusLabel(t.status)}</span>
-          ${t.status === 'pending' && t.issueNumber ? `<button class="btn-delete-text" data-id="${t.id}" data-issue="${t.issueNumber}" title="${currentLang === 'zh' ? '撤回这段文字' : 'Withdraw'}" style="background:none;border:1px solid var(--border);border-radius:50%;width:24px;height:24px;font-size:14px;line-height:1;cursor:pointer;color:var(--text-subtle);display:flex;align-items:center;justify-content:center;transition:all 0.2s;">&times;</button>` : ''}
+          ${t.status === 'pending' && t.issueNumber ? `<button class="btn-delete-text" data-id="${t.id}" data-issue="${t.issueNumber}" title="${t('delete.tooltip')}" style="background:none;border:1px solid var(--border);border-radius:50%;width:24px;height:24px;font-size:14px;line-height:1;cursor:pointer;color:var(--text-subtle);display:flex;align-items:center;justify-content:center;transition:all 0.2s;">&times;</button>` : ''}
         </div>
       </div>
     `).join('');
@@ -1113,7 +1135,7 @@ body {
         e.stopPropagation();
         const id = btn.dataset.id;
         const issueNumber = parseInt(btn.dataset.issue);
-        if (confirm(currentLang === 'zh' ? '确定撤回这段文字吗？它将从匹配池中移除。' : 'Withdraw this text? It will be removed from the matching pool.')) {
+        if (confirm(t('delete.confirm'))) {
           await deletePendingText(id, issueNumber);
         }
       });
@@ -1144,12 +1166,6 @@ body {
 
     // 投递
     document.getElementById('btn-deliver').addEventListener('click', handleDeliver);
-
-    // AI 采访模式
-    document.getElementById('interview-link').addEventListener('click', (e) => {
-      e.preventDefault();
-      startInterview();
-    });
 
     // 恢复草稿
     if (state.draft) {
@@ -1418,7 +1434,7 @@ body {
       renderReturningHome(document.getElementById('app'));
     } catch (e) {
       console.error('fata: deletePendingText failed', e);
-      alert(currentLang === 'zh' ? '撤回失败，请稍后重试' : 'Withdraw failed, please try again later');
+      alert(t('delete.failed'));
     }
   }
 
@@ -1674,18 +1690,17 @@ body {
   }
 
   function showMatchError(err, stack) {
-    const zh = currentLang === 'zh';
     const errMsg = err && err.message ? err.message : String(err || '');
     const stackLine = stack ? stack.split('\n').slice(1, 4).map(s => s.trim()).join(' → ') : '';
     document.getElementById('app').innerHTML = `
       <div class="no-match">
-        <p class="no-match-main">${zh ? '出了点问题' : 'Something went wrong'}</p>
-        <p class="no-match-sub">${zh ? '网络不太稳定，匹配没完成。点下面重试一下就好。' : 'The network is unstable and matching could not complete. Try again below.'}</p>
+        <p class="no-match-main">${t('error.network')}</p>
+        <p class="no-match-sub">${t('error.networkDesc')}</p>
         ${errMsg ? `<p style="font-size:11px;color:var(--text-whisper);font-family:var(--font-mono);word-break:break-all;margin:8px 0;">${errMsg}</p>` : ''}
         ${stackLine ? `<p style="font-size:9px;color:var(--text-whisper);font-family:var(--font-mono);word-break:break-all;margin:4px 0;opacity:0.7;">${stackLine}</p>` : ''}
         <div class="actions-row" style="margin-top:24px;">
-          <button class="btn-email" onclick="fata.retryMatch()">${zh ? '重试' : 'Retry'}</button>
-          <button class="btn-secondary" onclick="fata.renderHome()">${zh ? '返回' : 'Back'}</button>
+          <button class="btn-email" onclick="fata.retryMatch()">${t('error.retry')}</button>
+          <button class="btn-secondary" onclick="fata.renderHome()">${t('error.back')}</button>
         </div>
       </div>
     `;
@@ -1717,7 +1732,7 @@ body {
     document.getElementById('app').innerHTML = `
       <div class="interview-container">
         <div class="interview-back">
-          <a href="#" onclick="fata.renderHome();return false;">← ${currentLang === 'zh' ? '返回' : 'Back'}</a>
+          <a href="#" onclick="fata.renderHome();return false;">← ${t('error.back')}</a>
         </div>
         <div class="interview-messages" id="interview-messages">
           <div class="interview-msg ai">${t('interview.q1')}</div>
@@ -1748,7 +1763,7 @@ body {
       input.value = '';
       round++;
 
-      if (round >= 5 || text.includes('差不多了') || text.includes('就这样')) {
+      if (round >= 5 || text.includes(t('interview.enough')) || text.includes(t('interview.sendAnyway'))) {
         // 禁用输入
         input.disabled = true;
         sendBtn.disabled = true;
@@ -1762,7 +1777,7 @@ body {
             text_a: allAnswers
           }, HMAC_KEY_RAW);
 
-          const profile = (result && result.profile) || (currentLang === 'zh' ? '我最近在...' : 'Lately I\'ve been...');
+          const profile = (result && result.profile) || t('interview.composeFallback');
           const profileHTML = escapeHTML(profile);
           messages.innerHTML = messages.innerHTML.replace(t('interview.composing'), '');
           messages.innerHTML += `
@@ -1795,7 +1810,7 @@ body {
         } catch (e) {
           console.warn('fata: interview compose failed', e);
           // 降级：用原始回答拼接
-          const fallbackProfile = answers.join('。');
+          const fallbackProfile = answers.join(currentLang === 'zh' ? '。' : '. ');
           messages.innerHTML += `
             <div class="interview-msg ai">
               ${t('interview.composed')}
