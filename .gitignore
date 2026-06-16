@@ -60,3 +60,5 @@ Icon
 # --- 临时文件 ---
 *.local.*
 tools/e2e-test.js
+tools/audit.js
+tools/audit-logs/
