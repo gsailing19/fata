@@ -70,7 +70,7 @@ const ModelLoader = {
     this.state.status = 'fallback';
     this.state.fallbackMode = true;
     const t = window.t || (k => k);
-    this._reportProgress(onProgress, 100, t('model.fallbackMsg'));
+    this._reportProgress(onProgress, 100, t('model.fallback'));
     this._waitForNetworkRecovery(onProgress);
     const model = MODELS[this.state.lang] || MODELS.zh;
     return { mode: 'fallback', source: 'tfidf', dim: model.dim };

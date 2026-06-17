@@ -919,8 +919,9 @@ body {
     }
   };
 
-  let currentLang = localStorage.getItem('fata_lang') ||
-    (navigator.language.startsWith('en') ? 'en' : 'zh');
+  let currentLang;
+  try { currentLang = localStorage.getItem('fata_lang'); } catch (e) { /* Safari incognito */ }
+  currentLang = currentLang || (navigator.language.startsWith('en') ? 'en' : 'zh');
   if (!['zh','en'].includes(currentLang)) currentLang = 'zh';
 
   function t(key) { return I18N[currentLang]?.[key] || I18N.zh[key] || key; }
@@ -928,7 +929,7 @@ body {
 
   function setLanguage(lang) {
     currentLang = lang;
-    localStorage.setItem('fata_lang', lang);
+    try { localStorage.setItem('fata_lang', lang); } catch (e) { /* localStorage unavailable */ }
     document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
     // 清除回声池，让新语言重新初始化默认片段
     sessionStorage.removeItem('fata_echo_pool');
@@ -1438,9 +1439,10 @@ body {
         showMatchSuccess(matchResult, resonance, text);
 
         // Step C: 关掉双方 pending issue → 创建 match issue → 发送邮件（链式异步，不阻塞 UI）
-        const matchedIssue = matchResult.bestIssue;
+        const matchedNumber = matchResult.matchIssueNumber;
         const otherEmail = matchResult.matchInfo.otherEmail;
-        closeMatchedIssues(userIssue.issueNumber, matchedIssue, text, snippet).then(matchIssueNum => {
+        const matchedSnippet = matchResult.matchInfo.otherText || '';
+        closeMatchedIssues(userIssue.issueNumber, matchedNumber, text, snippet, matchedSnippet).then(matchIssueNum => {
           const finalNum = matchIssueNum || matchResult.matchIssueNumber;
           const otherTextSnippet = matchResult.matchInfo.otherText
             ? matchResult.matchInfo.otherText.slice(0, 120) : '';
@@ -1550,7 +1552,7 @@ body {
   }
 
   // 匹配成功后：关闭双方的 pending issue，创建 match issue
-  async function closeMatchedIssues(userIssueNumber, matchedIssue, userText, userSnippet) {
+  async function closeMatchedIssues(userIssueNumber, matchedNumber, userText, userSnippet, matchedSnippet) {
     // 每次请求单独生成 HMAC 签名，因为路径不同
     const closeUserHeaders = await LLMFallback._buildHMACHeaders('/api/github/issues/' + userIssueNumber, HMAC_KEY_RAW);
     // 关闭用户自己的 issue
@@ -1561,7 +1563,6 @@ body {
     });
 
     // 关闭匹配到的 issue
-    const matchedNumber = matchedIssue ? matchedIssue.number : null;
     if (matchedNumber && matchedNumber !== userIssueNumber) {
       const closeMatchHeaders = await LLMFallback._buildHMACHeaders('/api/github/issues/' + matchedNumber, HMAC_KEY_RAW);
       await fetch(API_BASE + '/api/github/issues/' + matchedNumber, {
@@ -1576,7 +1577,7 @@ body {
       user_issue: userIssueNumber,
       matched_issue: matchedNumber,
       user_snippet: userSnippet,
-      matched_snippet: matchedIssue ? (matchedIssue.body?.text_snippet || '') : '',
+      matched_snippet: matchedSnippet || '',
       timestamp: Date.now()
     });
     const matchHeaders = await LLMFallback._buildHMACHeaders('/api/github/issues', HMAC_KEY_RAW);
@@ -1962,7 +1963,7 @@ body {
   }
 
   async function getOrAskEmail() {
-    const stored = localStorage.getItem('fata_email');
+    let stored; try { stored = localStorage.getItem('fata_email'); } catch (e) { /* Safari incognito */ }
     if (stored) return stored;
 
     return new Promise(resolve => {
@@ -1999,7 +2000,7 @@ body {
       confirm.addEventListener('click', () => {
         const val = input.value.trim();
         if (val && val.includes('@')) {
-          localStorage.setItem('fata_email', val);
+          try { localStorage.setItem('fata_email', val); } catch (e) { /* localStorage unavailable */ }
           state.userEmail = val;
           done(val);
         } else {
