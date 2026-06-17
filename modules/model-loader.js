@@ -41,8 +41,11 @@ const ModelLoader = {
       const { pipeline, env } = await import(
         'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js'
       );
-      // 强制从 HuggingFace 下载模型，否则会被解析为当前页面 origin (fata.uk)
-      if (env) env.remoteHost = 'https://huggingface.co';
+      // 强制从 HuggingFace 下载，避免 localModelPath 默认 /models/ 解析到当前 origin
+      if (env) {
+        env.remoteHost = 'https://huggingface.co';
+        env.localModelPath = '';
+      }
 
       const pipe = await pipeline('feature-extraction', model.name, {
         progress_callback: (info) => {
