@@ -923,12 +923,14 @@ body {
   try { currentLang = localStorage.getItem('fata_lang'); } catch (e) { /* Safari incognito */ }
   currentLang = currentLang || (navigator.language.startsWith('en') ? 'en' : 'zh');
   if (!['zh','en'].includes(currentLang)) currentLang = 'zh';
+  window.currentLang = currentLang;
 
   function t(key) { return I18N[currentLang]?.[key] || I18N.zh[key] || key; }
   window.t = t;
 
   function setLanguage(lang) {
     currentLang = lang;
+    window.currentLang = lang;
     try { localStorage.setItem('fata_lang', lang); } catch (e) { /* localStorage unavailable */ }
     document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
     // 清除回声池，让新语言重新初始化默认片段
