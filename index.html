@@ -1015,9 +1015,7 @@ body {
       await MatchEngine.initialize(result);
     } else {
       state.modelStatus = 'fallback';
-      // 在降级模式下初始化（使用 TF-IDF）
-      // 不加载 Transformers.js pipeline，走字符 bigram + 余弦相似度降级
-      await MatchEngine.initialize({ mode: 'fallback' });
+      await MatchEngine.initialize(result);  // result.dim is set by _switchToFallback
     }
 
     // 初始化回声片段池（匿名展示用）
