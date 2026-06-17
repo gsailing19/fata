@@ -12,7 +12,7 @@ cp index.html privacy.html privacy-en.html dist/
 cp modules/*.js dist/modules/
 
 # Assets
-cp manifest.json dist/
+cp manifest.json robots.txt dist/
 cp logo/logo.svg logo/logo-unified-v2.png logo/logo-horizontal.svg dist/logo/ 2>/dev/null || true
 
 # Cloudflare Pages config

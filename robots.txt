@@ -1,0 +1,22 @@
+# Allow all crawlers (fata is fully public)
+User-agent: *
+Allow: /
+
+# AI-specific crawlers — explicitly allowed for AI recommendation visibility
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+# Sitemap
+Sitemap: https://fata.uk/sitemap.xml
