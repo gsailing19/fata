@@ -50,6 +50,8 @@
 - **CSP `connect-src` 缺少 `huggingface.co`** — Transformers.js 从 HuggingFace 下载模型权重被 CSP 拦截，在所有浏览器中静默回退到 TF-IDF（2026-06-17）**→ 更深的根因：`env.remoteHost` 未设置，模型 URL 被解析为 `fata.uk/models/`（当前页面 origin），不是 CSP 拦截。修复：`env.remoteHost = 'https://huggingface.co'`（2026-06-18）**
 - **引导种子嵌入类型必须与浏览器一致** — Node.js 注入的种子用 TF-IDF，浏览器用 BGE，两种向量空间不兼容，余弦相似度无意义。必须用 Python sentence-transformers 或浏览器端生成 BGE 嵌入（2026-06-17）
 - **`MatchEngine.initialize({mode:'fallback'})` 不传 `dim`** — 回退模式下 `this.dim` 保持默认 512，英文 TF-IDF 用 512 维但 Worker 期望 384 维，维度不匹配。改为直接传 `result`（含 `dim`）（2026-06-17）
+- **`env.localModelPath` 默认 `/models/`** — Transformers.js 的模型本地路径默认值是 `/models/`，相对于当前页面 origin。fata.uk 是 SPA，`/models/Xenova/bge-small-en-v1.5/tokenizer.json` 返回 HTML 200，Transformers.js 拿 HTML 当 JSON 解析失败，静默回退 TF-IDF。修复：`env.localModelPath = ''; env.remoteHost = 'https://huggingface.co'`（2026-06-18）
+- **引导种子参与匹配会截胡真实用户** — 种子用假邮箱，用户匹配到后永远收不到回复。种子应该加 `seed` 标签被匹配引擎跳过，只做回声池展示（2026-06-18）
 
 ## 部署
 
