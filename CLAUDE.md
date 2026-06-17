@@ -47,7 +47,7 @@
 - **动态阈值在池子 ≥100 时超过 1.0** — `baseThreshold + coolingFactor` 做加法，100 pending 时 0.55+0.25=0.80，复合得分几乎不可能达到；改为 0.46+0.04=0.50（2026-06-17）
 - **`matchResult.bestIssue` 不存在** — `MatchEngine.findMatch()` 返回的是 `matchIssueNumber`（数字）不是 `bestIssue`（对象），导致匹配后对方 Issue 永不关闭，僵尸 pending 累积（2026-06-17）
 - **`t('model.fallbackMsg')` I18N key 拼写错误** — 不存在，正确 key 是 `'model.fallback'`，模型加载失败时用户看到原始字符串（2026-06-17）
-- **CSP `connect-src` 缺少 `huggingface.co`** — Transformers.js 从 HuggingFace 下载模型权重被 CSP 拦截，在所有浏览器中静默回退到 TF-IDF（2026-06-17）
+- **CSP `connect-src` 缺少 `huggingface.co`** — Transformers.js 从 HuggingFace 下载模型权重被 CSP 拦截，在所有浏览器中静默回退到 TF-IDF（2026-06-17）**→ 更深的根因：`env.remoteHost` 未设置，模型 URL 被解析为 `fata.uk/models/`（当前页面 origin），不是 CSP 拦截。修复：`env.remoteHost = 'https://huggingface.co'`（2026-06-18）**
 - **引导种子嵌入类型必须与浏览器一致** — Node.js 注入的种子用 TF-IDF，浏览器用 BGE，两种向量空间不兼容，余弦相似度无意义。必须用 Python sentence-transformers 或浏览器端生成 BGE 嵌入（2026-06-17）
 - **`MatchEngine.initialize({mode:'fallback'})` 不传 `dim`** — 回退模式下 `this.dim` 保持默认 512，英文 TF-IDF 用 512 维但 Worker 期望 384 维，维度不匹配。改为直接传 `result`（含 `dim`）（2026-06-17）
 
