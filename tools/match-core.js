@@ -140,16 +140,26 @@ function normalizeNeed(raw, lang) {
     // LLM 常输出的组合标签（取第二个成分）
     'give advice / be heard': 'listen to others',
     'be heard / give advice': 'listen to others',
+    'give advice / listen to others': 'listen to others',
+    'listen to others / give advice': 'listen to others',
   };
   if (map[s]) return map[s];
 
-  // 处理 LLM 返回的组合标签（如 "give advice / be heard" → 分别匹配）
+  // 处理 LLM 返回的组合标签（如 "give advice / listen to others" → 分别匹配）
   // 放在 map 之后，让精确组合映射优先命中
   if (s.includes('/')) {
     const parts = s.split('/').map(p => p.trim());
+    // 尝试用 map 匹配每个子标签
+    const resolved = [];
     for (const part of parts) {
-      const resolved = normalizeNeed(part, lang);
-      if (resolved) return resolved;
+      const r = normalizeNeed(part, lang);
+      if (r) resolved.push(r);
+    }
+    // 如果有多个有效标签，优先选"倾听"而非"给建议"，因为 LLM
+    // 常把"倾听"误标为"give advice"，把它当成次要标签附加
+    if (resolved.length >= 1) {
+      const preferred = resolved.find(r => r === L.need.listen || r === L.need.be_heard);
+      return preferred || resolved[0];
     }
   }
 
