@@ -51,7 +51,8 @@
 - **引导种子嵌入类型必须与浏览器一致** — Node.js 注入的种子用 TF-IDF，浏览器用 BGE，两种向量空间不兼容，余弦相似度无意义。必须用 Python sentence-transformers 或浏览器端生成 BGE 嵌入（2026-06-17）
 - **`MatchEngine.initialize({mode:'fallback'})` 不传 `dim`** — 回退模式下 `this.dim` 保持默认 512，英文 TF-IDF 用 512 维但 Worker 期望 384 维，维度不匹配。改为直接传 `result`（含 `dim`）（2026-06-17）
 - **`env.localModelPath` 默认 `/models/`** — Transformers.js 的模型本地路径默认值是 `/models/`，相对于当前页面 origin。fata.uk 是 SPA，所有路径返回 HTML 200，Transformers.js 拿 HTML 当 JSON 解析失败，静默回退 TF-IDF。**更深的根因（2026-06-18）：CDN import URL 指向了 UMD 构建（`/dist/transformers.min.js`），没有 ES named exports，`pipeline` 和 `env` 均为 `undefined`。** 修复：(1) CDN URL 改为裸包名 `@xenova/transformers@2.17.2`（去掉 `/dist/transformers.min.js`）；(2) 只设 `env.remoteHost = 'https://huggingface.co'`，不手动设 `localModelPath`。SPA 对默认 `/models/` 返回 HTML，JSON 解析失败后自动触发远程 HuggingFace 回退。
-- **引导种子参与匹配会截胡真实用户** — 种子用假邮箱，用户匹配到后永远收不到回复。种子应该加 `seed` 标签被匹配引擎跳过，只做回声池展示（2026-06-18）
+- **LLM 返回组合 need 标签导致匹配失败** — LLM 对英文"倾听者"文本返回 `"give advice / listen to others"` 等组合标签。`normalizeNeed` 的 `/` 分割逻辑取第一个匹配，导致"give advice"被采纳，真正的"listen to others"被忽略。修复：(1) 添加常见组合标签的精确映射；(2) `/` 分割时优先采纳 `listen to others` / `be heard` 而非 `give advice`，因为 LLM 常把倾听误标为建议当次要标签附加（2026-06-18）
+- **多余 `}` 导致页面白屏** — 在 `init()` 的 else 分支添加 `showFallbackIndicator()` 时多了一个 `}`，提前关闭了函数，`renderHome()` 永远不被调用（2026-06-18）
 
 ## 部署
 
