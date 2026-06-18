@@ -18,7 +18,7 @@
 - 域名 fata.uk 已注册
 - 分发策略：先海外，暂缓国内（详见 `分发.md`）。海外渠道 Twitter/X、Reddit、Product Hunt、Hacker News、GitHub 开源社区。国内用户口耳相传自然流入，不做主动分发。
 
-## 匹配引擎（2026-06-17 经过完整 E2E 测试验证 + CSP 修复）
+## 匹配引擎（2026-06-18 模型加载修复 + match-core 重构）
 
 匹配流程已跑通并部署生产环境：
 
@@ -50,7 +50,7 @@
 - **CSP `connect-src` 缺少 `huggingface.co`** — Transformers.js 从 HuggingFace 下载模型权重被 CSP 拦截，在所有浏览器中静默回退到 TF-IDF（2026-06-17）**→ 更深的根因：`env.remoteHost` 未设置，模型 URL 被解析为 `fata.uk/models/`（当前页面 origin），不是 CSP 拦截。修复：`env.remoteHost = 'https://huggingface.co'`（2026-06-18）**
 - **引导种子嵌入类型必须与浏览器一致** — Node.js 注入的种子用 TF-IDF，浏览器用 BGE，两种向量空间不兼容，余弦相似度无意义。必须用 Python sentence-transformers 或浏览器端生成 BGE 嵌入（2026-06-17）
 - **`MatchEngine.initialize({mode:'fallback'})` 不传 `dim`** — 回退模式下 `this.dim` 保持默认 512，英文 TF-IDF 用 512 维但 Worker 期望 384 维，维度不匹配。改为直接传 `result`（含 `dim`）（2026-06-17）
-- **`env.localModelPath` 默认 `/models/`** — Transformers.js 的模型本地路径默认值是 `/models/`，相对于当前页面 origin。fata.uk 是 SPA，`/models/Xenova/bge-small-en-v1.5/tokenizer.json` 返回 HTML 200，Transformers.js 拿 HTML 当 JSON 解析失败，静默回退 TF-IDF。修复：`env.localModelPath = ''; env.remoteHost = 'https://huggingface.co'`（2026-06-18）
+- **`env.localModelPath` 默认 `/models/`** — Transformers.js 的模型本地路径默认值是 `/models/`，相对于当前页面 origin。fata.uk 是 SPA，所有路径返回 HTML 200，Transformers.js 拿 HTML 当 JSON 解析失败，静默回退 TF-IDF。**更深的根因（2026-06-18）：CDN import URL 指向了 UMD 构建（`/dist/transformers.min.js`），没有 ES named exports，`pipeline` 和 `env` 均为 `undefined`。** 修复：(1) CDN URL 改为裸包名 `@xenova/transformers@2.17.2`（去掉 `/dist/transformers.min.js`）；(2) 只设 `env.remoteHost = 'https://huggingface.co'`，不手动设 `localModelPath`。SPA 对默认 `/models/` 返回 HTML，JSON 解析失败后自动触发远程 HuggingFace 回退。
 - **引导种子参与匹配会截胡真实用户** — 种子用假邮箱，用户匹配到后永远收不到回复。种子应该加 `seed` 标签被匹配引擎跳过，只做回声池展示（2026-06-18）
 
 ## 部署
@@ -64,6 +64,33 @@ node tools/e2e-test.js
 
 # Worker 部署（独立）
 cd config && npx wrangler deploy
+```
+
+## 离线测试与参数调优
+
+匹配算法的评分函数和配置已提取到 `tools/match-core.js`，作为唯一真相来源。Worker 生产环境和所有测试工具都从这里导入。
+
+```bash
+# 不变量测试（<1s，54 项断言，中英文覆盖）
+node tools/invariant-tests.js
+
+# 配对测试（精确率/召回率/F1）
+node tools/algo-test.js --lang zh           # 中文 bigram 模式
+node tools/algo-test.js --lang en           # 英文 bigram 模式
+node tools/algo-test.js --mode transformers --lang zh  # BGE 保真度验证（需 @xenova/transformers）
+
+# 场景评估（Spearman 等级相关）
+node tools/evaluate-matching.js             # bigram 模式
+node tools/evaluate-matching.js --mode transformers  # BGE 保真度
+```
+
+**测试工具架构**：
+```
+tools/match-core.js       — 评分函数 + 算法配置（单点维护）
+tools/embed.js             — 嵌入生成：bigram / transformers / python 三种模式
+tools/invariant-tests.js  — 纯函数断言，<1 秒跑完
+tools/algo-test.js         — 配对分类测试（F1）
+tools/evaluate-matching.js — 场景等级评估（Spearman ρ）
 ```
 
 API token 存储在 `.claude/settings.local.json`（gitignored）。

@@ -580,6 +580,8 @@ body {
 /* 字数提示 */
 .length-hint { font-size: 13px; color: var(--text-subtle); margin-bottom: 16px; }
 .length-hint .low-signal { color: var(--warm); }
+.fallback-indicator { position: fixed; bottom: 24px; right: 24px; z-index: 100; font-size: 11px; color: var(--warm); padding: 4px 12px; border: 1px solid rgba(196,122,74,0.3); border-radius: 12px; background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-family: var(--font-sans); letter-spacing: 0.01em; cursor: default; transition: opacity 0.3s; opacity: 0.8; }
+.fallback-indicator:hover { opacity: 1; }
 </style>
 </head>
 <body>
@@ -733,6 +735,8 @@ body {
       'model.loadingAI': '正在加载 AI 引擎...',
       'model.downloading': '正在下载 AI 模型',
       'model.fallback': 'AI 模型加载失败，使用快速匹配模式',
+      'fallback.badge': '快速匹配模式',
+      'fallback.badgeTitle': 'AI 模型未加载，使用快速匹配。匹配精度可能降低。',
       'model.statusAnalyzing': '正在深度分析你的文字...',
       'model.statusFastMatching': '正在为你快速匹配...',
 
@@ -886,6 +890,8 @@ body {
       'model.loadingAI': 'Loading AI engine...',
       'model.downloading': 'Downloading AI model',
       'model.fallback': 'AI model failed to load, using fast match mode',
+      'fallback.badge': 'Fast match mode',
+      'fallback.badgeTitle': 'AI model not loaded. Using fast match. Match accuracy may be reduced.',
       'model.statusAnalyzing': 'Deep-analyzing your words...',
       'model.statusFastMatching': 'Fast-matching for you...',
 
@@ -974,8 +980,29 @@ body {
     if (e.detail && e.detail.pipeline) {
       MatchEngine.pipeline = e.detail.pipeline;
       state.modelStatus = 'ready';
+      hideFallbackIndicator();
     }
   });
+
+  // 监听模型加载失败
+  window.addEventListener('fata:model-error', () => {
+    showFallbackIndicator();
+  });
+
+  // ===== 工具函数 =====
+
+  function showFallbackIndicator() {
+    document.querySelector('.fallback-indicator')?.remove();
+    const el = document.createElement('div');
+    el.className = 'fallback-indicator';
+    el.title = t('fallback.badgeTitle');
+    el.textContent = t('fallback.badge');
+    document.body.appendChild(el);
+  }
+
+  function hideFallbackIndicator() {
+    document.querySelector('.fallback-indicator')?.remove();
+  }
 
   // ===== 初始化 =====
   async function init() {
@@ -1016,6 +1043,8 @@ body {
     } else {
       state.modelStatus = 'fallback';
       await MatchEngine.initialize(result);  // result.dim is set by _switchToFallback
+      showFallbackIndicator();
+    }
     }
 
     // 初始化回声片段池（匿名展示用）

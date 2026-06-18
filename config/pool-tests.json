@@ -1,0 +1,207 @@
+{
+  "_version": "1.0.0",
+  "pools": [
+    {
+      "id": "small_zh_complement",
+      "_desc": "中文小池：5 个候选含清晰互补（被倾听↔想倾听）",
+      "lang": "zh",
+      "pool_size_hint": 30,
+      "query": {
+        "text": "失恋后每天都很难熬，做什么都提不起劲，我只想有人能认真听我说说话",
+        "intent": {
+          "need": "被倾听",
+          "emo": "孤独但有克制",
+          "topics": ["情感关系", "自我成长"],
+          "style": "回应型",
+          "expect": "complementary",
+          "keywords": ["失恋", "孤独", "倾诉"],
+          "signalDensity": 0.75,
+          "depth": "深度"
+        }
+      },
+      "candidates": [
+        {
+          "id": "c1_listener",
+          "text": "我比较擅长倾听，如果你需要一个安静听你说话的人，我在这里",
+          "intent": {
+            "need": "想倾听他人",
+            "emo": "平静",
+            "topics": ["情感关系"],
+            "style": "主动型",
+            "expect": "complementary",
+            "keywords": ["倾听", "支持", "陪伴"],
+            "signalDensity": 0.7,
+            "depth": "深度"
+          },
+          "relevance": 4
+        },
+        {
+          "id": "c2_similar_pain",
+          "text": "我也是刚分手，每天晚上都失眠，感觉心里空了一大块",
+          "intent": {
+            "need": "被倾听",
+            "emo": "悲伤",
+            "topics": ["情感关系"],
+            "style": "回应型",
+            "expect": "similar",
+            "keywords": ["分手", "失眠", "空虚"],
+            "signalDensity": 0.8,
+            "depth": "深度"
+          },
+          "relevance": 3
+        },
+        {
+          "id": "c3_advice_giver",
+          "text": "分手而已，多出去走走认识新的人就好了，我给你几个建议",
+          "intent": {
+            "need": "想给建议",
+            "emo": "轻松",
+            "topics": ["自我成长"],
+            "style": "主动型",
+            "expect": "complementary",
+            "keywords": ["建议", "新生活", "社交"],
+            "signalDensity": 0.65,
+            "depth": "表面"
+          },
+          "relevance": 2
+        },
+        {
+          "id": "c4_casual_chat",
+          "text": "好无聊啊，有人聊天吗？随便聊什么都行",
+          "intent": {
+            "need": "闲聊",
+            "emo": "轻松",
+            "topics": ["日常碎片"],
+            "style": "调侃型",
+            "expect": "similar",
+            "keywords": ["无聊", "聊天", "随便"],
+            "signalDensity": 0.3,
+            "depth": "表面"
+          },
+          "relevance": 1
+        },
+        {
+          "id": "c5_unrelated",
+          "text": "今天股票又涨了，我的投资组合终于回本了",
+          "intent": {
+            "need": "找共鸣",
+            "emo": "兴奋",
+            "topics": ["工作事业"],
+            "style": "主动型",
+            "expect": "similar",
+            "keywords": ["股票", "投资", "赚钱"],
+            "signalDensity": 0.55,
+            "depth": "表面"
+          },
+          "relevance": 1
+        }
+      ],
+      "expected": {
+        "top_1_relevance_min": 3,
+        "should_not_include": ["c4_casual_chat"],
+        "min_ndcg_at_3": 0.7
+      }
+    },
+    {
+      "id": "small_en_complement",
+      "_desc": "英文小池：5 个候选含清晰互补（be heard↔listen to others）",
+      "lang": "en",
+      "pool_size_hint": 30,
+      "query": {
+        "text": "I moved to a new city for work and still haven't found my people. I just need someone to hear me without judgment.",
+        "intent": {
+          "need": "be heard",
+          "emo": "lonely but composed",
+          "topics": ["self growth", "city life"],
+          "style": "responsive",
+          "expect": "complementary",
+          "keywords": ["loneliness", "new city", "connection"],
+          "signalDensity": 0.75,
+          "depth": "deep"
+        }
+      },
+      "candidates": [
+        {
+          "id": "en_c1_listener",
+          "text": "I've always been the person friends turn to. There's something meaningful about being fully present for someone — just listening, no advice.",
+          "intent": {
+            "need": "listen to others",
+            "emo": "calm",
+            "topics": ["self growth"],
+            "style": "active",
+            "expect": "complementary",
+            "keywords": ["listening", "support", "presence"],
+            "signalDensity": 0.8,
+            "depth": "deep"
+          },
+          "relevance": 4
+        },
+        {
+          "id": "en_c2_similar_lonely",
+          "text": "Same here — moved six months ago and still eat dinner alone most nights. The silence gets loud.",
+          "intent": {
+            "need": "be heard",
+            "emo": "lonely",
+            "topics": ["city life", "self growth"],
+            "style": "responsive",
+            "expect": "similar",
+            "keywords": ["loneliness", "new city", "silence"],
+            "signalDensity": 0.75,
+            "depth": "deep"
+          },
+          "relevance": 3
+        },
+        {
+          "id": "en_c3_advice",
+          "text": "Just join a gym or a meetup group. Problem solved. You're overthinking it.",
+          "intent": {
+            "need": "give advice",
+            "emo": "lighthearted",
+            "topics": ["hobbies", "self growth"],
+            "style": "active",
+            "expect": "complementary",
+            "keywords": ["gym", "meetup", "advice"],
+            "signalDensity": 0.4,
+            "depth": "surface"
+          },
+          "relevance": 1
+        },
+        {
+          "id": "en_c4_deep_discussion",
+          "text": "I think about this too — how modern life atomizes us. We're surrounded by people yet feel completely alone. Is it technology, or has it always been this way?",
+          "intent": {
+            "need": "deep discussion",
+            "emo": "numb",
+            "topics": ["philosophy", "self growth"],
+            "style": "serious",
+            "expect": "similar",
+            "keywords": ["atomization", "modern life", "philosophy"],
+            "signalDensity": 0.85,
+            "depth": "deep"
+          },
+          "relevance": 2
+        },
+        {
+          "id": "en_c5_casual",
+          "text": "hey anyone up? just bored watching netflix lol",
+          "intent": {
+            "need": "casual chat",
+            "emo": "lighthearted",
+            "topics": ["daily life"],
+            "style": "playful",
+            "expect": "similar",
+            "keywords": ["bored", "netflix", "chat"],
+            "signalDensity": 0.2,
+            "depth": "surface"
+          },
+          "relevance": 1
+        }
+      ],
+      "expected": {
+        "top_1_relevance_min": 3,
+        "should_not_include": ["en_c3_advice"],
+        "min_ndcg_at_3": 0.7
+      }
+    }
+  ]
+}

@@ -20,7 +20,12 @@ const ModelLoader = {
     status: 'idle', // idle | loading | ready | fallback
     progress: 0,
     fallbackMode: false,
-    lang: 'zh'
+    fallbackReason: null,
+    lang: 'zh',
+    retryTimer: null,
+    retryCount: 0,
+    maxRetries: 5,
+    retryIntervalMs: 60000
   },
 
   /**
@@ -39,12 +44,14 @@ const ModelLoader = {
 
     try {
       const { pipeline, env } = await import(
-        'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js'
+        'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2'
       );
-      // 强制从 HuggingFace 下载，避免 localModelPath 默认 /models/ 解析到当前 origin
+
+      // 强制从 HuggingFace CDN 下载模型。
+      // 注意：SPA 对所有路径返回 HTML 200，不设 localModelPath，让默认 /models/
+      // 本地加载失败（HTML 非 JSON）后自动回退到 remoteHost。
       if (env) {
         env.remoteHost = 'https://huggingface.co';
-        env.localModelPath = '';
       }
 
       const pipe = await pipeline('feature-extraction', model.name, {
@@ -66,17 +73,37 @@ const ModelLoader = {
       this.state.progress = 100;
       return { mode: 'full', source: 'cache', pipeline: pipe, dim: model.dim };
     } catch (e) {
-      console.warn('ModelLoader: pipeline creation failed, switching to fallback', e);
-      return this._switchToFallback(onProgress);
+      const errType = this._classifyError(e);
+      console.warn(`ModelLoader: ${errType} — switching to fallback`, e.message || e);
+      return this._switchToFallback(onProgress, errType);
     }
   },
 
-  async _switchToFallback(onProgress) {
+  _classifyError(err) {
+    const msg = (err && err.message) ? err.message : String(err || '');
+    if (/failed to fetch|NetworkError|ERR_INTERNET_DISCONNECTED/i.test(msg)) {
+      return 'network';
+    }
+    if (/blocked|Content.Security.Policy/i.test(msg)) {
+      return 'csp_block';
+    }
+    if (/404|Not.Found/i.test(msg)) {
+      return 'model_404';
+    }
+    return 'unknown';
+  },
+
+  async _switchToFallback(onProgress, errorType) {
     this.state.status = 'fallback';
     this.state.fallbackMode = true;
+    this.state.fallbackReason = errorType || 'unknown';
     const t = window.t || (k => k);
     this._reportProgress(onProgress, 100, t('model.fallback'));
     this._waitForNetworkRecovery(onProgress);
+    this._startPeriodicRetry(onProgress);
+    window.dispatchEvent(new CustomEvent('fata:model-error', {
+      detail: { type: errorType || 'unknown', lang: this.state.lang }
+    }));
     const model = MODELS[this.state.lang] || MODELS.zh;
     return { mode: 'fallback', source: 'tfidf', dim: model.dim };
   },
@@ -96,6 +123,36 @@ const ModelLoader = {
         }
       };
       connection.addEventListener('change', handler);
+    }
+  },
+
+  _startPeriodicRetry(onProgress) {
+    if (this.state.retryTimer) return;
+    this.state.retryTimer = setInterval(async () => {
+      if (!this.state.fallbackMode) {
+        this._stopPeriodicRetry();
+        return;
+      }
+      if (this.state.retryCount >= this.state.maxRetries) {
+        this._stopPeriodicRetry();
+        return;
+      }
+      this.state.retryCount++;
+      const result = await this.initialize(onProgress, this.state.lang);
+      if (result.mode === 'full') {
+        this._stopPeriodicRetry();
+        this.state.fallbackMode = false;
+        window.dispatchEvent(new CustomEvent('fata:model-ready', {
+          detail: { pipeline: result.pipeline, dim: result.dim }
+        }));
+      }
+    }, this.state.retryIntervalMs);
+  },
+
+  _stopPeriodicRetry() {
+    if (this.state.retryTimer) {
+      clearInterval(this.state.retryTimer);
+      this.state.retryTimer = null;
     }
   },
 
