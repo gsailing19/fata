@@ -114,7 +114,8 @@ function normalizeNeed(raw, lang) {
     if (s === cn) return cn;
   }
 
-  // 常见 LLM 变体 → canonical
+  // 常见 LLM 变体 → canonical（必须在 / 分割之前，因为组合标签如
+  // "give advice / be heard" 需要先匹配完整形式）
   const map = {
     'to be heard': 'be heard', 'being heard': 'be heard',
     'need to be heard': 'be heard', 'want to be heard': 'be heard',
@@ -136,8 +137,21 @@ function normalizeNeed(raw, lang) {
     'deep conversation': 'deep discussion', 'thoughtful discussion': 'deep discussion',
     'small talk': 'casual chat', 'chat': 'casual chat',
     'just talk': 'casual chat', 'pass time': 'casual chat',
+    // LLM 常输出的组合标签（取第二个成分）
+    'give advice / be heard': 'listen to others',
+    'be heard / give advice': 'listen to others',
   };
   if (map[s]) return map[s];
+
+  // 处理 LLM 返回的组合标签（如 "give advice / be heard" → 分别匹配）
+  // 放在 map 之后，让精确组合映射优先命中
+  if (s.includes('/')) {
+    const parts = s.split('/').map(p => p.trim());
+    for (const part of parts) {
+      const resolved = normalizeNeed(part, lang);
+      if (resolved) return resolved;
+    }
+  }
 
   // 子串匹配：canonical form 包含在 raw 中
   for (const cn of canonical) {
