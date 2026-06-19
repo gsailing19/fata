@@ -1359,7 +1359,7 @@ body {
     const embEncrypted = await encryptData(embedding);
     const emailEncrypted = await encryptEmail(email);
     const emailHash = await sha256(email);
-    const snippet = text.length > 80 ? text.slice(0, 80) : text;
+    const snippet = text.length > 300 ? text.slice(0, 300) : text;
 
     const body = JSON.stringify({
       l: currentLang,
@@ -1386,7 +1386,7 @@ body {
     }
 
     const issue = await resp.json();
-    return { issueNumber: issue.number, embedding };
+    return { issueNumber: issue.number, embedding, _match: issue._match || null };
   }
 
   async function executeMatch(text, email, signalResult) {
@@ -1415,33 +1415,30 @@ body {
         intentProfile.signalDensity = signalResult.score;
       }
 
-      // Step A: 用户文字入匹配池
+      // Step A: 用户文字入匹配池（Worker 自动在池中搜索匹配）
       showWaiting(t('waiting.addingToPool'));
-      let userIssue;
+      let userIssue, workerMatchResult;
       try {
         userIssue = await createPendingIssue(text, email, intentProfile);
+        workerMatchResult = userIssue._match; // Worker 在创建 Issue 后自动匹配
       } catch (e) {
         throw new Error('[createIssue] ' + (e.message || e));
       }
 
-      // Step B: 在池中寻找匹配
+      // Step B: 处理匹配结果（Worker 已完成搜索）
       showWaiting(t('waiting.comparing'));
 
       const snippet = text.length > 80 ? text.slice(0, 80) : text;
       const emailHash = await sha256(email);
       let matchResult;
-      try {
-        matchResult = await MatchEngine.findMatch(
-          text,
-          await encryptEmail(email),
-          intentProfile,
-          state.matchMode,
-          userIssue.issueNumber,  // 排除自己的 issue
-          emailHash               // 排除同邮箱的旧 issue（跨 session 自匹配防护）
-        );
-      } catch (e) {
-        console.error('fata: findMatch failed', e);
-        throw e;
+
+      if (workerMatchResult && workerMatchResult.matched) {
+        // Worker 返回了匹配结果，转换为浏览器端期望的格式
+        const result = workerMatchResult;
+        matchResult = await MatchEngine.processMatchResult(result);
+      } else {
+        // Worker 未找到匹配
+        matchResult = { matched: false, poolSize: workerMatchResult?.candidatesCount || 0 };
       }
 
       if (matchResult.matched) {
