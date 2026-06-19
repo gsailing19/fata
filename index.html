@@ -1366,6 +1366,7 @@ body {
       e: embEncrypted,
       m: emailEncrypted,
       h: emailHash,
+      et: MatchEngine.embeddingType || 'tfidf',
       text_snippet: snippet,
       allow_snippet: state.allowSnippet,
       ...(intentProfile ? { i: await encryptData(intentProfile) } : {})

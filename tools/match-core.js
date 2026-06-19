@@ -142,6 +142,26 @@ function normalizeNeed(raw, lang) {
     'be heard / give advice': 'listen to others',
     'give advice / listen to others': 'listen to others',
     'listen to others / give advice': 'listen to others',
+    // 缺失的常见变体（2026-06-19 诊断补充）
+    'listener': 'listen to others',
+    'i listen': 'listen to others',
+    'here to listen': 'listen to others',
+    'hear you out': 'listen to others',
+    'need to talk': 'be heard',
+    'need someone to talk to': 'be heard',
+    'looking for connection': 'find resonance',
+    'seeking connection': 'find resonance',
+    'feel lonely': 'be heard',
+    'need support': 'be heard',
+    'need emotional support': 'be heard',
+    'offer support': 'listen to others',
+    'be there for someone': 'listen to others',
+    'seeking understanding': 'be heard',
+    'want to understand': 'listen to others',
+    'like to help': 'give advice',
+    'looking for guidance': 'get advice',
+    'share thoughts': 'deep discussion',
+    'vent': 'be heard',
   };
   if (map[s]) return map[s];
 
@@ -172,29 +192,105 @@ function normalizeNeed(raw, lang) {
     if (cn.includes(s) && s.length >= 4) return cn;
   }
 
+  // 兜底：关键词启发式（以上规则全部失败时，从 unknown need 推断）
+  // LLM 偶有创造性输出，关键词匹配比返回原始字符串更鲁棒
+  if (s.includes('listen') || s.includes('hear') && !s.includes('heard')) return L.need.listen;
+  if (s.includes('heard') || s.includes('vent') || s.includes('lonely')) return L.need.be_heard;
+  if (s.includes('advice') || s.includes('guidance') || s.includes('help')) return L.need.get_advice;
+  if (s.includes('resonance') || s.includes('connect')) return L.need.resonance;
+  if (s.includes('discuss') || s.includes('talk') || s.includes('convers')) return L.need.deep_discussion;
+
   return s;
 }
 
-function calculateScore(userEmb, otherEmb, userIntent, otherIntent, lang) {
+// LLM intent_parse 失败时从文本推断基础意图画像
+// 英文：关键词匹配。中文：同样用关键词。
+// 返回最小可用的 intent 对象（need + 推断的 emotion/depth），用于 calculateScore 降级
+function inferIntentFromText(text, lang) {
+  if (!text) return null;
+  const L = (ALGORITHM_CONFIG.labels[lang] || ALGORITHM_CONFIG.labels.zh);
+  const lower = text.toLowerCase();
+
+  // need 推断（关键词优先级：倾听 > 被倾听 > 建议 > 讨论）
+  let need = '';
+  if (lower.includes('here to listen') || lower.includes('lend an ear') ||
+      lower.includes('here for you') || lower.includes('be there for') ||
+      lower.includes('fully present') || lower.includes('open heart') ||
+      lower.includes('listening with') || lower.includes('friends turn to')) {
+    need = L.need.listen;
+  } else if (lower.includes('hear me') || lower.includes('be heard') ||
+             lower.includes('listen to me') || lower.includes('need someone') ||
+             lower.includes('no judgment') || lower.includes('loneliness') ||
+             lower.includes('by myself') || lower.includes('sit with my thoughts') ||
+             lower.includes('need to talk') || lower.includes('vent')) {
+    need = L.need.be_heard;
+  } else if (lower.includes('give advice') || lower.includes('share experience') ||
+             lower.includes('mentor') || lower.includes('offer advice')) {
+    need = L.need.give_advice;
+  } else if (lower.includes('need advice') || lower.includes('looking for advice') ||
+             lower.includes('guidance') || lower.includes('help me')) {
+    need = L.need.get_advice;
+  } else if (lower.includes('resonance') || lower.includes('connection') ||
+             lower.includes('find my people') || lower.includes('on the same wavelength')) {
+    need = L.need.resonance;
+  }
+
+  // 情绪推断
+  let emo = '';
+  const negEmo = L.emotion_neg;
+  const posEmo = L.emotion_pos;
+  for (const e of negEmo) {
+    if (lower.includes(e)) { emo = e; break; }
+  }
+  if (!emo) {
+    for (const e of posEmo) {
+      if (lower.includes(e)) { emo = e; break; }
+    }
+  }
+
+  // 深度推断
+  let depth = '';
+  if (lower.includes('heavy') || lower.includes('deep') || lower.includes('alone') ||
+      lower.includes('thoughts') || lower.includes('heart') || lower.includes('vulnerable')) {
+    depth = L.depth[2]; // 'deep'
+  } else if (text.length > 100) {
+    depth = L.depth[1]; // 'medium'
+  }
+
+  // 风格推断
+  let style = '';
+  if (lower.includes('not looking for advice') || lower.includes('just need someone') ||
+      lower.includes('fully present') || lower.includes('open heart')) {
+    style = L.style.responsive;
+  }
+
+  return { need, emo, depth, style };
+}
+
+function calculateScore(userEmb, otherEmb, userIntent, otherIntent, lang, userText, otherText) {
   const cfg = ALGORITHM_CONFIG.scoring_weights;
   const L = (ALGORITHM_CONFIG.labels[lang] || ALGORITHM_CONFIG.labels.zh);
   const cosineSim = cosineSimilarity(userEmb, otherEmb);
 
+  // 意图降级：LLM 失败时从文本推断基础意图
+  const uIntent = userIntent || (userText ? inferIntentFromText(userText, lang) : null);
+  const oIntent = otherIntent || (otherText ? inferIntentFromText(otherText, lang) : null);
+
   // 意图兼容度（多维度）
   let intentCompat = 0.5;
-  if (userIntent && otherIntent) {
-    intentCompat = calculateIntentCompatibility(userIntent, otherIntent, lang);
+  if (uIntent && oIntent) {
+    intentCompat = calculateIntentCompatibility(uIntent, oIntent, lang);
   }
 
   // 风格适配
   let styleCompat = 0.5;
-  if (userIntent && otherIntent) {
-    styleCompat = calculateStyleCompatibility(userIntent.style, otherIntent.style, lang);
+  if (uIntent && oIntent) {
+    styleCompat = calculateStyleCompatibility(uIntent.style, oIntent.style, lang);
   }
 
   // 信号密度
-  const signalA = (userIntent && typeof userIntent.signalDensity === 'number') ? userIntent.signalDensity : 0.5;
-  const signalB = (otherIntent && typeof otherIntent.signalDensity === 'number') ? otherIntent.signalDensity : 0.5;
+  const signalA = (uIntent && typeof uIntent.signalDensity === 'number') ? uIntent.signalDensity : 0.5;
+  const signalB = (oIntent && typeof oIntent.signalDensity === 'number') ? oIntent.signalDensity : 0.5;
   let signalProduct = signalA * signalB;
   // 信号悬殊惩罚：一方高质量一方敷衍，匹配体验差
   if (Math.abs(signalA - signalB) > 0.4) signalProduct *= 0.6;
@@ -210,8 +306,8 @@ function calculateScore(userEmb, otherEmb, userIntent, otherIntent, lang) {
   if (signalA <= 0.3 && signalB <= 0.3) score *= 0.6;
 
   // 双向等待全局惩罚：关键需求冲突时，其他维度适当降权（使用归一化后的 need）
-  const uNeed = normalizeNeed((userIntent && userIntent.need) || '', lang);
-  const oNeed = normalizeNeed((otherIntent && otherIntent.need) || '', lang);
+  const uNeed = normalizeNeed((uIntent && uIntent.need) || '', lang);
+  const oNeed = normalizeNeed((oIntent && oIntent.need) || '', lang);
   if (uNeed === L.need.be_heard && oNeed === L.need.be_heard) score *= 0.85;
 
   return score;
@@ -404,10 +500,13 @@ function getCoolingFactor(pendingCount) {
     cfg.cool_alpha.value;
 }
 
-function getEffectiveThreshold(pendingCount) {
+function getEffectiveThreshold(pendingCount, lang) {
   const baseThreshold = ALGORITHM_CONFIG.thresholds.cosine_threshold.value;
   const cooling = getCoolingFactor(pendingCount);
-  return baseThreshold + cooling;
+  // 英文 word-bigram TF-IDF 天然相似度低（~0.06），嵌入贡献近乎为零
+  // 匹配完全依赖意图兼容度。降低阈值让互补意图能够过线。
+  const langOffset = (lang === 'en') ? -0.06 : 0;
+  return baseThreshold + cooling + langOffset;
 }
 
 // TF-IDF 向量（降级用），根据语言选择中文 char-bigram 或英文 word-bigram
@@ -465,6 +564,7 @@ module.exports = {
   ALGORITHM_CONFIG,
   cosineSimilarity,
   normalizeNeed,
+  inferIntentFromText,
   calculateScore,
   calculateIntentCompatibility,
   normalizeStyle,

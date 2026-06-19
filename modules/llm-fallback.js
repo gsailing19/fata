@@ -16,7 +16,8 @@
 
 const LLMFallback = {
   config: {
-    timeoutMs: 15000,          // 15s 超时
+    timeoutMs: 20000,          // 20s 超时（DeepSeek 偶有慢响应）
+    maxRetries: 1,             // 超时后自动重试 1 次
     maxConsecutiveFallbacks: 3, // 连续 3 次降级后提示
     cooldownMinutes: 5          // 超过 3 次后建议等待时间
   },
@@ -61,42 +62,51 @@ const LLMFallback = {
    * @returns {Promise<Object|null>} — LLM 结果 | null（超时/失败）
    */
   async callWithTimeout(endpoint, payload, hmacKey) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs);
+    const maxTries = 1 + (this.config.maxRetries || 0); // 1 次正常 + N 次重试
+    let lastError = null;
 
-    try {
-      const hmacHeaders = await this._buildHMACHeaders(endpoint, hmacKey);
-      const fullUrl = endpoint.startsWith('http') ? endpoint : `https://worker.fata.uk${endpoint}`;
-      const response = await fetch(fullUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...hmacHeaders
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      });
+    for (let attempt = 0; attempt < maxTries; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs);
 
-      clearTimeout(timeoutId);
+      try {
+        const hmacHeaders = await this._buildHMACHeaders(endpoint, hmacKey);
+        const fullUrl = endpoint.startsWith('http') ? endpoint : `https://worker.fata.uk${endpoint}`;
+        const response = await fetch(fullUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...hmacHeaders
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
 
-      if (!response.ok) {
-        throw new Error(`LLM API returned ${response.status}`);
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`LLM API returned ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // 成功 → 重置降级计数
+        this.state.consecutiveFallbacks = 0;
+
+        return data;
+      } catch (err) {
+        clearTimeout(timeoutId);
+        lastError = err;
+        // 超时不重试（已等 20s），仅网络错误重试
+        if (err.name === 'AbortError') break;
+        // 非超时错误继续重试
       }
-
-      const data = await response.json();
-
-      // 成功 → 重置降级计数
-      this.state.consecutiveFallbacks = 0;
-
-      return data;
-    } catch (err) {
-      clearTimeout(timeoutId);
-
-      // 记录降级
-      this._recordFallback(err.name === 'AbortError' ? 'timeout' : 'error');
-
-      return null; // null = 降级信号
     }
+
+    // 所有尝试失败 → 记录降级
+    this._recordFallback(lastError?.name === 'AbortError' ? 'timeout' : 'error');
+
+    return null; // null = 降级信号
   },
 
   /**
@@ -215,8 +225,10 @@ const LLMFallback = {
     if (window.MatchEngine && window.MatchEngine.findMatch) {
       // 传入已生成的 embedding，避免用空字符串重新生成零向量
       window.MatchEngine._cachedEmbedding = embedding;
+      window.MatchEngine._cachedEmbeddingType = 'tfidf';
       const result = await window.MatchEngine.findMatch('', userEmail, null, 'fast_fallback');
       window.MatchEngine._cachedEmbedding = null;
+      window.MatchEngine._cachedEmbeddingType = null;
       return result;
     }
     return { matched: false, poolSize: 0 };
