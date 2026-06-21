@@ -101,14 +101,11 @@ BOOTSTRAPS = [
 
 
 def get_hmac_key():
-    """Fetch HMAC key from env var or Worker API."""
+    """Get HMAC key from FATA_HMAC_KEY env var."""
     key = os.environ.get('FATA_HMAC_KEY', '')
-    if key:
-        return key
-    ctx = ssl.create_default_context()
-    req = urllib.request.Request(f"{WORKER}/api/hmac-key", headers={'User-Agent': 'fata-bootstrap/1.0'})
-    with urllib.request.urlopen(req, context=ctx) as resp:
-        return json.loads(resp.read())["hmac_key"]
+    if not key:
+        raise RuntimeError('FATA_HMAC_KEY env var not set. HMAC key is no longer available via API endpoint.')
+    return key
 
 
 def encrypt_aes(plaintext, hmac_key):

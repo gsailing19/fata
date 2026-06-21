@@ -32,7 +32,7 @@
   → 暂无匹配: Issue 留在池中等待
 ```
 
-所有 Worker API 调用需要 HMAC 签名（`X-Fata-Signature` + `X-Fata-Timestamp`），密钥从 `GET /api/hmac-key` 获取。
+所有 Worker API 调用需要 HMAC 签名（`X-Fata-Signature` + `X-Fata-Timestamp`）。HMAC 密钥前端静态嵌入（不再通过 API 端点获取，参见 `SECURITY-PREVENTION.md` 规则 2）。
 
 **密钥分离（2026-06-17 安全加固）**：HMAC_KEY 仅用于 API 签名（可公开）。数据静态存储使用 `ENCRYPTION_KEY`（Worker secret，不对浏览器暴露）。Worker 在写入 GitHub 前自动重加密，读取时解密。即使 HMAC_KEY 泄露，池中数据不可解密。
 
@@ -53,6 +53,13 @@
 - **`env.localModelPath` 默认 `/models/`** — Transformers.js 的模型本地路径默认值是 `/models/`，相对于当前页面 origin。fata.uk 是 SPA，所有路径返回 HTML 200，Transformers.js 拿 HTML 当 JSON 解析失败，静默回退 TF-IDF。**更深的根因（2026-06-18）：CDN import URL 指向了 UMD 构建（`/dist/transformers.min.js`），没有 ES named exports，`pipeline` 和 `env` 均为 `undefined`。** 修复：(1) CDN URL 改为裸包名 `@xenova/transformers@2.17.2`（去掉 `/dist/transformers.min.js`）；(2) 只设 `env.remoteHost = 'https://huggingface.co'`，不手动设 `localModelPath`。SPA 对默认 `/models/` 返回 HTML，JSON 解析失败后自动触发远程 HuggingFace 回退。
 - **LLM 返回组合 need 标签导致匹配失败** — LLM 对英文"倾听者"文本返回 `"give advice / listen to others"` 等组合标签。`normalizeNeed` 的 `/` 分割逻辑取第一个匹配，导致"give advice"被采纳，真正的"listen to others"被忽略。修复：(1) 添加常见组合标签的精确映射；(2) `/` 分割时优先采纳 `listen to others` / `be heard` 而非 `give advice`，因为 LLM 常把倾听误标为建议当次要标签附加（2026-06-18）
 - **多余 `}` 导致页面白屏** — 在 `init()` 的 else 分支添加 `showFallbackIndicator()` 时多了一个 `}`，提前关闭了函数，`renderHome()` 永远不被调用（2026-06-18）
+- **`/api/hmac-key` 公开端点导致 LLM 被白嫖** — HMAC 密钥通过无认证 API 公开获取，攻击者拿到密钥后伪造签名，通过 Worker LLM 代理端点免费调用 DeepSeek。2026-06-20 一天被刷 1,262 次、3.49 亿 token、¥272。修复：删除公开端点、HMAC 密钥静态嵌入前端、速率限制 fail-closed、LLM 日 token 上限（2026-06-20，详见 `INCIDENT-2026-06-20.md`）
+
+## 安全事故记录 + 预防措施
+
+- **`INCIDENT-2026-06-20.md`** — LLM 端点白嫖事故完整报告（时间线、根因、损失、教训）
+- **`SECURITY-PREVENTION.md`** — 从事故提取的 9 条预防规则（公开端点检查、限流 fail-closed、API Key 隔离、审计增强等）
+- **`SECURITY-HMAC-LLM-LEAK.md`** — 漏洞发现时的原始分析记录
 
 ## 部署
 
@@ -102,7 +109,7 @@ API token 存储在 `.claude/settings.local.json`（gitignored）。
 |------|------|------|
 | 传输 | HTTPS + HMAC 签名 | 浏览器→Worker 请求签名，5 分钟防重放窗口 |
 | 存储 | 双密钥 AES-GCM | HMAC_KEY 签名 / ENCRYPTION_KEY 加密，密钥分离 |
-| 速率 | KV 滑动窗口 | GitHub 30/min, LLM 20/min, Resend 5/min（per IP） |
+| 速率 | KV 滑动窗口 | GitHub 30/min, LLM 20/min + 50,000 token/day, Resend 5/min（per IP） |
 | 响应头 | `_headers` + CSP meta | X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy；CSP `connect-src` 必须包含 `huggingface.co`（模型下载）和 `worker.fata.uk`（API） |
 | 部署 | `deploy.sh` 白名单 | 仅 15 个公开文件部署到 Pages，Worker 源码/算法/工具不外泄 |
 | 监控 | 每日审计 + 限流统计 | `node tools/audit.js` 9 项检查含速率限制命中预警 |

@@ -386,6 +386,54 @@ body {
   transform: translateY(-1px);
 }
 
+/* 匹配成功 — 分享模块 */
+.match-share-hint {
+  margin-top: 40px;
+  padding: 20px 16px 16px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  animation: fadeInUp 0.6s var(--spring) 0.5s both;
+}
+.match-share-toggle {
+  display: none; /* 不再需要 toggle，内容直接展示 */
+}
+.match-share-content {
+  /* 默认展开，不再折叠 */
+}
+.match-share-text {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  color: var(--text-subtle);
+  line-height: 1.8;
+  margin-bottom: 8px;
+  text-wrap: balance;
+}
+.match-share-url {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-whisper);
+  margin-bottom: 14px;
+}
+.match-share-copy-btn {
+  display: inline-block;
+  font-size: 13px;
+  padding: 6px 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  color: var(--text-subtle);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  background: rgba(255,255,255,0.3);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.25s var(--spring);
+}
+.match-share-copy-btn:hover {
+  border-color: var(--text-subtle);
+  background: rgba(255,255,255,0.7);
+  color: var(--text);
+}
+
 /* ===== 无匹配等待页 ===== */
 .no-match {
   display: flex; flex-direction: column; align-items: center;
@@ -604,12 +652,12 @@ body {
    * 加载顺序: config → modules → UI 初始化
    */
 
-  import { ModelLoader } from './modules/model-loader.js';
-  import { SafetyHandler } from './modules/safety-handler.js';
-  import { LLMFallback } from './modules/llm-fallback.js';
-  import { LowSignalGuide } from './modules/low-signal-guide.js';
-  import { ResendRetry } from './modules/resend-retry.js';
-  import { MatchEngine } from './modules/match-engine.js';
+  import { ModelLoader } from './modules/model-loader.js?v=2';
+  import { SafetyHandler } from './modules/safety-handler.js?v=2';
+  import { LLMFallback } from './modules/llm-fallback.js?v=2';
+  import { LowSignalGuide } from './modules/low-signal-guide.js?v=2';
+  import { ResendRetry } from './modules/resend-retry.js?v=2';
+  import { MatchEngine } from './modules/match-engine.js?v=2';
 
   // ===== i18n 国际化 =====
   const I18N = {
@@ -1021,21 +1069,22 @@ body {
       state.pendingTexts = history;
     }
 
-    // 加载模型
+    // 加载模型（25s 超时，防止无痕模式等场景下 CDN 下载卡死）
     renderModelLoading();
-    const result = await ModelLoader.initialize(onModelProgress, currentLang);
-
-    // 从 Worker 获取 HMAC 密钥（存入 sessionStorage，仅本次会话有效）
+    let result;
     try {
-      const keyResp = await fetch('https://worker.fata.uk/api/health');
-      if (keyResp.ok) {
-        HMAC_KEY_RAW = sessionStorage.getItem('fata_hmac_key') ||
-          await _fetchHMACKey();
-        window.HMAC_KEY_RAW = HMAC_KEY_RAW;
-      }
-    } catch (e) {
-      console.warn('fata: HMAC key fetch failed, API calls will be unsigned');
+      result = await Promise.race([
+        ModelLoader.initialize(onModelProgress, currentLang),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('model_load_timeout')), 25000))
+      ]);
+    } catch (modelErr) {
+      console.warn('fata: model load timed out or failed, forcing fallback', modelErr.message);
+      result = { mode: 'fallback', source: 'tfidf', dim: currentLang === 'en' ? 384 : 512 };
     }
+
+    // 从 Worker 获取 HMAC 密钥（已改为静态嵌入，不再从 API 获取）
+    HMAC_KEY_RAW = '8d1e884f360cf6355964f9956ed67fd83e77eadf86dd94d5180cba505f0864d3';
+    window.HMAC_KEY_RAW = HMAC_KEY_RAW;
 
     if (result.mode === 'full') {
       state.modelStatus = 'ready';
@@ -1732,10 +1781,7 @@ body {
         </div>
 
         <div class="match-share-hint">
-          <span class="match-share-toggle" id="match-share-toggle">
-            ${t('share.matchHint').replace('→', '<span class="arrow">→</span>')}
-          </span>
-          <div class="match-share-content" id="match-share-content">
+          <div class="match-share-content">
             <div class="match-share-text">${t('share.matchText')}</div>
             <div class="match-share-url">${t('share.matchUrl')}</div>
             <span class="match-share-copy-btn" id="match-share-copy">${t('share.copy')}</span>
@@ -1757,16 +1803,8 @@ body {
         });
       });
 
-      // 分享模块 toggle
-      const shareToggle = document.getElementById('match-share-toggle');
-      const shareContent = document.getElementById('match-share-content');
+      // 分享复制按钮
       const shareCopyBtn = document.getElementById('match-share-copy');
-      if (shareToggle && shareContent) {
-        shareToggle.addEventListener('click', () => {
-          shareToggle.classList.toggle('open');
-          shareContent.classList.toggle('open');
-        });
-      }
       if (shareCopyBtn) {
         shareCopyBtn.addEventListener('click', () => {
           const text = `${t('share.matchText')}\n${t('share.matchUrl')}`;
@@ -2072,36 +2110,6 @@ body {
       throw e;
     }
   }
-
-  async function _fetchHMACKey() {
-    // 从 Worker 获取 HMAC 密钥（仅一次，存入 sessionStorage）
-    try {
-      const path = '/api/hmac-key';
-      const ts = Math.floor(Date.now() / 1000).toString();
-      // 初次请求没有 HMAC 签名（鸡生蛋问题），Worker 的 /api/hmac-key 豁免 HMAC
-      const resp = await fetch(`https://worker.fata.uk${path}`, {
-        headers: { 'X-Fata-Timestamp': ts }
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.hmac_key) {
-          sessionStorage.setItem('fata_hmac_key', data.hmac_key);
-          return data.hmac_key;
-        }
-      }
-    } catch (e) {
-      console.warn('fata: could not fetch HMAC key', e);
-    }
-    return '';
-  }
-
-
-
-
-
-
-
-
 
   function getEchoSnippet() {
     const pool = getEchoPool();
