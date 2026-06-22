@@ -25,9 +25,9 @@
 <!-- CSP -->
 <meta http-equiv="Content-Security-Policy"
   content="default-src 'self';
-  script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+  script-src 'self' 'unsafe-inline';
   style-src 'self' 'unsafe-inline';
-  connect-src 'self' https://worker.fata.uk https://api.github.com https://gitee.com https://cdn.jsdelivr.net https://huggingface.co https://cdn-lfs.huggingface.co;
+  connect-src 'self' https://worker.fata.uk https://api.github.com https://gitee.com;
   img-src 'self' data:;
   font-src 'self';
   worker-src 'self' blob:;
@@ -652,12 +652,13 @@ body {
    * 加载顺序: config → modules → UI 初始化
    */
 
-  import { ModelLoader } from './modules/model-loader.js?v=2';
+  import { SignalHeuristic } from './modules/signal-heuristic.js?v=3';
+  import { PoWSolver } from './modules/pow-solver.js?v=3';
+  import { APIClient } from './modules/api-client.js?v=3';
   import { SafetyHandler } from './modules/safety-handler.js?v=2';
-  import { LLMFallback } from './modules/llm-fallback.js?v=2';
   import { LowSignalGuide } from './modules/low-signal-guide.js?v=2';
   import { ResendRetry } from './modules/resend-retry.js?v=2';
-  import { MatchEngine } from './modules/match-engine.js?v=2';
+  import { MatchEngine } from './modules/match-engine.js?v=3';
 
   // ===== i18n 国际化 =====
   const I18N = {
@@ -1069,31 +1070,12 @@ body {
       state.pendingTexts = history;
     }
 
-    // 加载模型（25s 超时，防止无痕模式等场景下 CDN 下载卡死）
-    renderModelLoading();
-    let result;
-    try {
-      result = await Promise.race([
-        ModelLoader.initialize(onModelProgress, currentLang),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('model_load_timeout')), 25000))
-      ]);
-    } catch (modelErr) {
-      console.warn('fata: model load timed out or failed, forcing fallback', modelErr.message);
-      result = { mode: 'fallback', source: 'tfidf', dim: currentLang === 'en' ? 384 : 512 };
-    }
-
-    // 从 Worker 获取 HMAC 密钥（已改为静态嵌入，不再从 API 获取）
+    // v3: No model download. Embedding via Worker API. TF-IDF fallback always available.
     HMAC_KEY_RAW = '8d1e884f360cf6355964f9956ed67fd83e77eadf86dd94d5180cba505f0864d3';
     window.HMAC_KEY_RAW = HMAC_KEY_RAW;
 
-    if (result.mode === 'full') {
-      state.modelStatus = 'ready';
-      await MatchEngine.initialize(result);
-    } else {
-      state.modelStatus = 'fallback';
-      await MatchEngine.initialize(result);  // result.dim is set by _switchToFallback
-      showFallbackIndicator();
-    }
+    state.apiStatus = 'ok';
+    await MatchEngine.initialize({ mode: 'api', lang: currentLang });
 
     // 初始化回声片段池（匿名展示用）
     if (!sessionStorage.getItem('fata_echo_pool')) {
@@ -1347,47 +1329,28 @@ body {
   async function handleDeliver() {
     const textarea = document.getElementById('user-text');
     const text = textarea.value.trim();
-
     if (!text) return;
 
-    // 获取或提示输入邮箱
     const email = await getOrAskEmail();
     if (!email) return;
 
-    // Step 1: 信号密度评分 + 安全检测
-    const signalResult = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
-      prompt_type: 'signal_density',
-      text_a: text,
-      lang: currentLang
-    }, HMAC_KEY_RAW);
+    // Phase 1: Signal density + safety check (browser-side, instant)
+    showWaiting(t('waiting.feeling'));
+    const signalResult = SignalHeuristic.computeSignalDensity(text, currentLang);
 
-    // Step 2: 安全检测
-    if (signalResult) {
-      const safetyDecision = SafetyHandler.handleAnalysis(signalResult, text);
-
-      if (!safetyDecision.shouldCreateIssue) {
-        if (safetyDecision.uiState === 'support_resources') {
-          showSupportResources(safetyDecision.resources);
-        } else if (safetyDecision.uiState === 'rejected') {
-          showRejection(safetyDecision);
-        }
-        return;
-      }
-    } else {
-      // LLM 不可用时，用本地关键词检查做兜底
-      const localCheck = SafetyHandler.localCheck(text);
-      if (localCheck.action === 'support') {
-        showSupportResources(SafetyHandler.resources);
-        return;
-      }
-      if (localCheck.action === 'reject') {
-        showRejection({ cooldownSeconds: 3600 });
-        return;
-      }
+    // Safety check
+    const localCheck = SafetyHandler.localCheck(text);
+    if (localCheck.action === 'support') {
+      showSupportResources(SafetyHandler.resources);
+      return;
+    }
+    if (localCheck.action === 'reject') {
+      showRejection({ cooldownSeconds: 3600 });
+      return;
     }
 
-    // Step 3: 试探型用户引导
-    if (signalResult && signalResult.score) {
+    // Low signal guide
+    if (signalResult.score < 0.3) {
       const guideDecision = LowSignalGuide.checkNeedsGuide(text, signalResult);
       if (guideDecision.needsGuide) {
         showLowSignalGuide(text);
@@ -1395,9 +1358,37 @@ body {
       }
     }
 
-    // Step 4: 执行匹配
-    state.lastMatchAttempt = { text, email, signalResult };
-    await executeMatch(text, email, signalResult);
+    // Phase 2: Full submit (PoW → Worker handles embedding + matching)
+    showWaiting(t('submit.sending'));
+
+    try {
+      // Compute TF-IDF locally as API fallback
+      const tfidfEmbedding = await MatchEngine._generateEmbedding(text);
+
+      // Encrypt email before sending
+      const emailEncrypted = await encryptEmail(email);
+      const emailHash = await sha256(email);
+
+      // Call Worker /api/submit
+      const result = await APIClient.call('/api/submit', {
+        text, emailEnc: emailEncrypted, emailHash,
+        lang: currentLang,
+        allowSnippet: state.allowSnippet,
+        tfidfEmbedding
+      }, HMAC_KEY_RAW);
+
+      state.lastMatchAttempt = { text, email };
+
+      if (result.matched) {
+        const resonance = result.resonance || { resonance: t('match.resonanceFallback'), questions: [t('match.icebreaker1'), t('match.icebreaker2'), t('match.icebreaker3')] };
+        showMatchSuccess(result, resonance, text);
+      } else {
+        showNoMatch(result);
+      }
+    } catch (e) {
+      console.error('fata: submit failed', e);
+      showMatchError({ message: e.message });
+    }
   }
 
   // ===== 匹配流程 =====

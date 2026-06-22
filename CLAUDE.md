@@ -4,7 +4,7 @@
 
 ## 一句话
 
-一个静态 HTML 文件，用户打开网页写文字 → 浏览器里跑 AI 做情感频率匹配 → 撮合同频陌生人 → 双方用**自己的邮箱**通信。零服务器、零数据库、零聊天记录——"架构即隐私"。
+一个静态 HTML 文件，用户打开网页写文字 → 浏览器端启发式算法即时评分 → Worker 调 API 生成智能匹配指纹 → 撮合同频陌生人 → 双方用**自己的邮箱**通信。零服务器、零数据库、零聊天记录、零模型下载——"打开即用"。
 
 ## 开发规则
 
@@ -18,19 +18,26 @@
 - 域名 fata.uk 已注册
 - 分发策略：先海外，暂缓国内（详见 `分发.md`）。海外渠道 Twitter/X、Reddit、Product Hunt、Hacker News、GitHub 开源社区。国内用户口耳相传自然流入，不做主动分发。
 
-## 匹配引擎（2026-06-18 模型加载修复 + match-core 重构）
+## 匹配引擎（2026-06-22 v3 重构 — 移除 24MB 模型 + LLM 端点内部化）
 
-匹配流程已跑通并部署生产环境：
+匹配流程 v3，首屏秒开，零模型下载：
 
 ```
 用户投递
   → 安全检测 (safety-handler.js)
-  → 信号引导 (low-signal-guide.js)
-  → 创建 GitHub Issue 入池 (AES-GCM 加密 embedding + email)
+  → 信号密度评分 (signal-heuristic.js, 浏览器端毫秒级)
+  → Worker /api/submit → 调 BGE-M3 embedding API (1024维) → 加密入池
   → 拉取同语言池子 → 多通道评分 → MMR 重排
-  → 匹配成功: 关闭双方 Issue → 创建 Match Issue → Resend 发邮件
+  → 匹配成功: 关闭双方 Issue → 创建 Match Issue → Worker 内部调共振 LLM → Resend 发邮件
   → 暂无匹配: Issue 留在池中等待
 ```
+
+关键变化：
+- **删除了 `/api/llm/*` 公开代理端点** — LLM 调用不再经过浏览器
+- **24MB BGE 模型已移除** — embedding 通过 Worker → SiliconFlow BGE-M3 API 生成，浏览器端 TF-IDF 做即时兜底
+- **信号密度 + 意图解析改用浏览器端启发式**（`modules/signal-heuristic.js`），零 API 成本
+- **共振描述保留 Worker 端 LLM** — 唯一的服务端 AI 调用，仅在匹配成功时触发
+- **Worker observability 已关闭** — 不做文字采样
 
 所有 Worker API 调用需要 HMAC 签名（`X-Fata-Signature` + `X-Fata-Timestamp`）。HMAC 密钥前端静态嵌入（不再通过 API 端点获取，参见 `SECURITY-PREVENTION.md` 规则 2）。
 
@@ -54,6 +61,7 @@
 - **LLM 返回组合 need 标签导致匹配失败** — LLM 对英文"倾听者"文本返回 `"give advice / listen to others"` 等组合标签。`normalizeNeed` 的 `/` 分割逻辑取第一个匹配，导致"give advice"被采纳，真正的"listen to others"被忽略。修复：(1) 添加常见组合标签的精确映射；(2) `/` 分割时优先采纳 `listen to others` / `be heard` 而非 `give advice`，因为 LLM 常把倾听误标为建议当次要标签附加（2026-06-18）
 - **多余 `}` 导致页面白屏** — 在 `init()` 的 else 分支添加 `showFallbackIndicator()` 时多了一个 `}`，提前关闭了函数，`renderHome()` 永远不被调用（2026-06-18）
 - **`/api/hmac-key` 公开端点导致 LLM 被白嫖** — HMAC 密钥通过无认证 API 公开获取，攻击者拿到密钥后伪造签名，通过 Worker LLM 代理端点免费调用 DeepSeek。2026-06-20 一天被刷 1,262 次、3.49 亿 token、¥272。修复：删除公开端点、HMAC 密钥静态嵌入前端、速率限制 fail-closed、LLM 日 token 上限（2026-06-20，详见 `INCIDENT-2026-06-20.md`）
+- **v3 重构：删除所有公开 LLM 端点 + 移除 24MB 模型** — `/api/llm/*` 路由彻底删除，信号密度/意图解析改为浏览器端启发式，embedding 移到 Worker 端 API 调用（BGE-M3），首屏秒开。共振 LLM 保留为 Worker 内部调用（需匹配上下文验证）。（2026-06-22，详见 `INCIDENT-2026-06-20.md` 和 `SECURITY-PREVENTION.md`）
 
 ## 安全事故记录 + 预防措施
 
@@ -109,8 +117,9 @@ API token 存储在 `.claude/settings.local.json`（gitignored）。
 |------|------|------|
 | 传输 | HTTPS + HMAC 签名 | 浏览器→Worker 请求签名，5 分钟防重放窗口 |
 | 存储 | 双密钥 AES-GCM | HMAC_KEY 签名 / ENCRYPTION_KEY 加密，密钥分离 |
-| 速率 | KV 滑动窗口 | GitHub 30/min, LLM 20/min + 50,000 token/day, Resend 5/min（per IP） |
-| 响应头 | `_headers` + CSP meta | X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy；CSP `connect-src` 必须包含 `huggingface.co`（模型下载）和 `worker.fata.uk`（API） |
+| 速率 | KV 滑动窗口 | GitHub 30/min, Submit 3/email/day + 500/day global cap, Resend 5/min（per IP） |
+| 反滥用 | PoW + 邮箱限流 + 信号门 | 提交前需解 SHA-256 挑战，单邮箱日限 3 次，低信号文本不入池 |
+| 响应头 | `_headers` + CSP meta | X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy；CSP `connect-src` 包含 `worker.fata.uk`（API）和 `api.github.com` |
 | 部署 | `deploy.sh` 白名单 | 仅 15 个公开文件部署到 Pages，Worker 源码/算法/工具不外泄 |
 | 监控 | 每日审计 + 限流统计 | `node tools/audit.js` 9 项检查含速率限制命中预警 |
 
@@ -140,11 +149,13 @@ node tools/audit.js
 ## 核心架构（一句话技术栈）
 
 ```
-浏览器 AI (Transformers.js + bge-small-zh/en, 24MB)
-  → HMAC_KEY 签名请求 → Worker 重加密 (ENCRYPTION_KEY) → GitHub Issues 静态加密存储
+浏览器启发式 (signal-heuristic.js, 毫秒级)
+  → HMAC 签名请求 → Worker → BGE-M3 embedding API (SiliconFlow, 1024维)
+  → 加密存储 (AES-GCM + ENCRYPTION_KEY) → GitHub Issues 静态加密存储
   → 文字匹配 (多通道评分 + MMR 多样性重排)
-    → Resend (匹配通知邮件，3000封/月免费)
-      → 用户自己邮箱 (SMTP/IMAP 通信，产品零接触)
+    → Worker 内部共振 LLM (仅在匹配成功时调用)
+      → Resend (匹配通知邮件，3000封/月免费)
+        → 用户自己邮箱 (SMTP/IMAP 通信，产品零接触)
 
-安全: 密钥分离 (HMAC ≠ AES) + KV 速率限制 + CSP/_headers + 每日审计
+安全: 密钥分离 (HMAC ≠ AES) + PoW + 邮箱限流 + CSP + 每日审计
 ```
