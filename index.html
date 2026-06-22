@@ -1544,19 +1544,13 @@ window.addEventListener('unhandledrejection', function(e) {
     return null;
   }
 
-  async function generateResonance(textA, textB) {
-    try {
-      return await APIClient.call('/api/resonance', {
-        textA: textA?.slice(0, 500),
-        textB: textB?.slice(0, 500),
-        lang: currentLang
-      }, HMAC_KEY_RAW);
-    } catch (e) {
-      console.warn('fata: resonance API failed, using fallback', e);
-      return {
-        resonance: t('match.resonanceFallback'),
-        questions: [t('match.icebreaker1'), t('match.icebreaker2'), t('match.icebreaker3')]
-      };
+  // v3: Resonance generated server-side during /api/submit. This is fallback only.
+  function generateResonance() {
+    return {
+      resonance: t('match.resonanceFallback'),
+      questions: [t('match.icebreaker1'), t('match.icebreaker2'), t('match.icebreaker3')]
+    };
+  }
     }
   }
 
