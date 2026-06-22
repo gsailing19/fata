@@ -195,3 +195,4 @@ const SignalHeuristic = {
 
 // Expose globally for index.html use
 if (typeof window !== 'undefined') window.SignalHeuristic = SignalHeuristic;
+export { SignalHeuristic };

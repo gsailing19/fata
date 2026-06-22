@@ -68,3 +68,4 @@ const APIClient = {
 };
 
 if (typeof window !== 'undefined') window.APIClient = APIClient;
+export { APIClient };

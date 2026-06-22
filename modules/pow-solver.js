@@ -107,3 +107,4 @@ const PoWSolver = {
 };
 
 if (typeof window !== 'undefined') window.PoWSolver = PoWSolver;
+export { PoWSolver };

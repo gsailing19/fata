@@ -646,19 +646,33 @@ body {
 <footer class="footer" id="page-footer" style="display:none;"></footer>
 
 <!-- ===== 模块脚本 ===== -->
+<script>
+window.addEventListener('error', function(e) {
+  var app = document.getElementById('app');
+  if (app && !app.innerHTML.trim()) {
+    app.innerHTML = '<div style="padding:40px;color:red;font:14px monospace;"><h3>Error</h3><pre>' + (e.message||'') + '</pre><p>' + (e.filename||'') + ':' + (e.lineno||'') + '</p></div>';
+  }
+});
+window.addEventListener('unhandledrejection', function(e) {
+  var app = document.getElementById('app');
+  if (app && !app.innerHTML.trim()) {
+    app.innerHTML = '<div style="padding:40px;color:red;font:14px monospace;"><h3>Promise Error</h3><pre>' + ((e.reason&&e.reason.message)||e.reason||'') + '</pre></div>';
+  }
+});
+</script>
 <script type="module">
   /**
    * fata 主应用 — index.html
    * 加载顺序: config → modules → UI 初始化
    */
 
-  import { SignalHeuristic } from './modules/signal-heuristic.js?v=3';
-  import { PoWSolver } from './modules/pow-solver.js?v=3';
-  import { APIClient } from './modules/api-client.js?v=3';
+  import { SignalHeuristic } from './modules/signal-heuristic.js?v=4';
+  import { PoWSolver } from './modules/pow-solver.js?v=4';
+  import { APIClient } from './modules/api-client.js?v=4';
   import { SafetyHandler } from './modules/safety-handler.js?v=2';
   import { LowSignalGuide } from './modules/low-signal-guide.js?v=2';
   import { ResendRetry } from './modules/resend-retry.js?v=2';
-  import { MatchEngine } from './modules/match-engine.js?v=3';
+  import { MatchEngine } from './modules/match-engine.js?v=4';
 
   // ===== i18n 国际化 =====
   const I18N = {
@@ -693,6 +707,8 @@ body {
       'waiting.feeling': '正在感受你的文字...',
       'waiting.addingToPool': '正在将你的文字放入匹配池...',
       'waiting.comparing': '正在将你的频率和池子里的文字进行对比...',
+
+      'submit.sending': '正在分析你的文字...',
 
       'match.resonanceFallback': '你们在此刻的频率很接近。',
       'match.icebreaker1': '你当时在想什么？',
@@ -849,6 +865,8 @@ body {
       'waiting.addingToPool': 'Adding your words to the pool...',
       'waiting.comparing': 'Comparing your frequency with the pool...',
 
+      'submit.sending': 'Analyzing your words...',
+
       'match.resonanceFallback': 'Your frequencies are close right now.',
       'match.icebreaker1': 'What were you thinking about?',
       'match.icebreaker2': 'Ask them to recommend a song.',
@@ -1003,18 +1021,17 @@ body {
 
   // ===== 全局状态 =====
   const state = {
-    userEmail: null,           // 用户邮箱
-    currentText: null,         // 当前编辑的文字
-    intentProfile: null,       // LLM 意图解析结果
-    matchMode: 'deep',         // 'deep' | 'fast'
-    showTextToMatch: true,     // 是否允许展示文字给对方
-    allowSnippet: true,        // 是否允许匿名展示文字片段
-    isReturningUser: false,    // 是否为回访用户
-    modelStatus: 'idle',       // 'idle' | 'loading' | 'ready' | 'fallback'
-    pendingTexts: [],          // 历史文字列表
-    currentMatch: null,        // 当前匹配结果
-    draft: null,              // 草稿
-    lastMatchAttempt: null     // { text, email, signalResult } 用于失败重试
+    userEmail: null,
+    currentText: null,
+    intentProfile: null,
+    showTextToMatch: true,
+    allowSnippet: true,
+    isReturningUser: false,
+    apiStatus: 'ok',           // v3: 'ok' | 'degraded' (replaces modelStatus)
+    pendingTexts: [],
+    currentMatch: null,
+    draft: null,
+    lastMatchAttempt: null     // { text, email } — simplified in v3
   };
 
   // HMAC 密钥（浏览器端生成，与服务端 HMAC_KEY 相同）
@@ -1024,32 +1041,19 @@ body {
   // API 基地址
   const API_BASE = 'https://worker.fata.uk';
 
-  // 监听网络恢复后模型重新加载（来自 ModelLoader）
-  window.addEventListener('fata:model-ready', (e) => {
-    if (e.detail && e.detail.pipeline) {
-      MatchEngine.pipeline = e.detail.pipeline;
-      state.modelStatus = 'ready';
-      hideFallbackIndicator();
-    }
-  });
-
-  // 监听模型加载失败
-  window.addEventListener('fata:model-error', () => {
-    showFallbackIndicator();
-  });
-
   // ===== 工具函数 =====
 
-  function showFallbackIndicator() {
-    document.querySelector('.fallback-indicator')?.remove();
-    const el = document.createElement('div');
+  function showAPIDegraded() {
+    state.apiStatus = 'degraded';
+    const el = document.querySelector('.fallback-indicator') || document.createElement('div');
     el.className = 'fallback-indicator';
-    el.title = t('fallback.badgeTitle');
-    el.textContent = t('fallback.badge');
-    document.body.appendChild(el);
+    el.title = 'API degraded — using fallback matching';
+    el.textContent = '⚡';
+    if (!document.body.contains(el)) document.body.appendChild(el);
   }
 
-  function hideFallbackIndicator() {
+  function hideAPIDegraded() {
+    state.apiStatus = 'ok';
     document.querySelector('.fallback-indicator')?.remove();
   }
 
@@ -1099,17 +1103,6 @@ body {
   }
 
   // ===== 页面渲染 =====
-
-  function renderModelLoading() {
-    document.getElementById('app').innerHTML = `
-      <div class="model-loading">
-        <p class="waiting-text">${t('loading.preparing')}</p>
-        <p class="waiting-sub" style="font-size:12px;color:var(--text-whisper);">${t('loading.preparing')}</p>
-        <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
-        <p class="waiting-sub progress-text"></p>
-      </div>
-    `;
-  }
 
   function renderFooter() {
     const footer = document.getElementById('page-footer');
@@ -1223,18 +1216,18 @@ body {
   }
 
   function renderReturningHome(app) {
-    const active = state.pendingTexts.filter(t => t.status === 'pending').length;
-    const matched = state.pendingTexts.filter(t => t.status === 'matched').length;
+    const active = state.pendingTexts.filter(e => e.status === 'pending').length;
+    const matched = state.pendingTexts.filter(e => e.status === 'matched').length;
 
-    const historyHTML = state.pendingTexts.map(t => `
+    const historyHTML = state.pendingTexts.map(e => `
       <div class="text-history-item">
         <div>
-          <span class="text-history-date">${formatDate(t.timestamp)}</span>
-          <span class="text-history-topic">${t.snippet || '...'}</span>
+          <span class="text-history-date">${formatDate(e.timestamp)}</span>
+          <span class="text-history-topic">${e.snippet || '...'}</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <span class="text-history-status status-${t.status}">${statusLabel(t.status)}</span>
-          ${t.status === 'pending' && t.issueNumber ? `<button class="btn-delete-text" data-id="${t.id}" data-issue="${t.issueNumber}" title="${t('delete.tooltip')}" style="background:none;border:1px solid var(--border);border-radius:50%;width:24px;height:24px;font-size:14px;line-height:1;cursor:pointer;color:var(--text-subtle);display:flex;align-items:center;justify-content:center;transition:all 0.2s;">&times;</button>` : ''}
+          <span class="text-history-status status-${e.status}">${statusLabel(e.status)}</span>
+          ${e.status === 'pending' && e.issueNumber ? `<button class="btn-delete-text" data-id="${e.id}" data-issue="${e.issueNumber}" title="${t('delete.tooltip')}" style="background:none;border:1px solid var(--border);border-radius:50%;width:24px;height:24px;font-size:14px;line-height:1;cursor:pointer;color:var(--text-subtle);display:flex;align-items:center;justify-content:center;transition:all 0.2s;">&times;</button>` : ''}
         </div>
       </div>
     `).join('');
@@ -1413,7 +1406,7 @@ body {
     });
 
     const endpoint = '/api/github/issues';
-    const hmacHeaders = await LLMFallback._buildHMACHeaders(endpoint, HMAC_KEY_RAW);
+    const hmacHeaders = await APIClient._buildHMACHeaders(endpoint, HMAC_KEY_RAW);
     const resp = await fetch(API_BASE + endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...hmacHeaders },
@@ -1429,139 +1422,27 @@ body {
     return { issueNumber: issue.number, embedding, _match: issue._match || null };
   }
 
-  async function executeMatch(text, email, signalResult) {
+  // v3: Simplified match — Worker handles everything via /api/submit
+  async function executeMatch(text, email) {
     try {
-      showWaiting(t('waiting.feeling'));
+      showWaiting(t('submit.sending') || t('waiting.feeling'));
 
-      // 意图解析（深度匹配模式）
-      let intentProfile = null;
-      if (state.matchMode === 'deep') {
-        try {
-          const intentResult = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
-            prompt_type: 'intent_parse',
-            text_a: text,
-            lang: currentLang
-          }, HMAC_KEY_RAW);
-          if (intentResult) {
-            intentProfile = intentResult;
-          }
-        } catch (e) {
-          throw new Error('[LLM intent] ' + (e.message || e));
-        }
-      }
-
-      // 将 signalDensity 合并到 intentProfile 中（Worker 评分引擎需要）
-      if (intentProfile && signalResult && typeof signalResult.score === 'number') {
-        intentProfile.signalDensity = signalResult.score;
-      }
-
-      // Step A: 用户文字入匹配池（Worker 自动在池中搜索匹配）
-      showWaiting(t('waiting.addingToPool'));
-      let userIssue, workerMatchResult;
-      try {
-        userIssue = await createPendingIssue(text, email, intentProfile);
-        workerMatchResult = userIssue._match; // Worker 在创建 Issue 后自动匹配
-      } catch (e) {
-        throw new Error('[createIssue] ' + (e.message || e));
-      }
-
-      // Step B: 处理匹配结果（Worker 已完成搜索）
-      showWaiting(t('waiting.comparing'));
-
-      const snippet = text.length > 80 ? text.slice(0, 80) : text;
+      const tfidfEmbedding = await MatchEngine._generateEmbedding(text);
+      const emailEncrypted = await encryptEmail(email);
       const emailHash = await sha256(email);
-      let matchResult;
 
-      if (workerMatchResult && workerMatchResult.matched) {
-        // Worker 返回了匹配结果，转换为浏览器端期望的格式
-        const result = workerMatchResult;
-        matchResult = await MatchEngine.processMatchResult(result);
+      const result = await APIClient.call('/api/submit', {
+        text, emailEnc: emailEncrypted, emailHash,
+        lang: currentLang, allowSnippet: state.allowSnippet, tfidfEmbedding
+      }, HMAC_KEY_RAW);
+
+      state.lastMatchAttempt = { text, email };
+
+      if (result.matched) {
+        const resonance = result.resonance || { resonance: t('match.resonanceFallback'), questions: [t('match.icebreaker1'), t('match.icebreaker2'), t('match.icebreaker3')] };
+        showMatchSuccess(result, resonance, text);
       } else {
-        // Worker 未找到匹配
-        matchResult = { matched: false, poolSize: workerMatchResult?.candidatesCount || 0 };
-      }
-
-      if (matchResult.matched) {
-        // 生成共鸣描述
-        const resonance = await generateResonance(text, matchResult.matchInfo.otherText);
-        // 保存匹配历史
-        await saveToIndexedDB('fata_history', {
-          id: Date.now(),
-          text: text,
-          snippet: text.slice(0, 80),
-          status: 'matched',
-          timestamp: Date.now(),
-          matchEmail: matchResult.matchInfo.otherEmail,
-          issueNumber: userIssue.issueNumber
-        });
-        state.pendingTexts.push({
-          id: Date.now().toString(),
-          text: text,
-          snippet: text.slice(0, 80),
-          status: 'matched',
-          timestamp: Date.now(),
-          issueNumber: userIssue.issueNumber
-        });
-        showMatchSuccess(matchResult, resonance, text);
-
-        // Step C: 关掉双方 pending issue → 创建 match issue → 发送邮件（链式异步，不阻塞 UI）
-        const matchedNumber = matchResult.matchIssueNumber;
-        const otherEmail = matchResult.matchInfo.otherEmail;
-        const matchedSnippet = matchResult.matchInfo.otherText || '';
-        closeMatchedIssues(userIssue.issueNumber, matchedNumber, text, snippet, matchedSnippet).then(matchIssueNum => {
-          const finalNum = matchIssueNum || matchResult.matchIssueNumber;
-          const otherTextSnippet = matchResult.matchInfo.otherText
-            ? matchResult.matchInfo.otherText.slice(0, 120) : '';
-          return sha256(otherEmail || '').then(emailHashB =>
-            ResendRetry.sendWithRetry({
-              personA: {
-                ownEmail: email,
-                ownText: text.slice(0, 120),
-                showOwnText: state.showTextToMatch,
-                otherEmail: otherEmail,
-                otherText: otherTextSnippet,
-                showOtherText: true,
-                emailHash: ''
-              },
-              personB: {
-                ownEmail: otherEmail,
-                ownText: otherTextSnippet,
-                showOwnText: true,
-                otherEmail: email,
-                otherText: text.slice(0, 120),
-                showOtherText: state.showTextToMatch,
-                emailHash: emailHashB
-              },
-              resonance: resonance.resonance,
-              icebreakers: resonance.questions,
-              lang: currentLang
-            }, finalNum)
-          );
-        }).catch(e => {
-          console.warn('fata: post-match cleanup failed', e);
-        });
-      } else {
-        // 暂无匹配：文字已入池，等待后来者
-        await saveToIndexedDB('fata_history', {
-          id: Date.now(),
-          text: text,
-          snippet: text.slice(0, 80),
-          status: 'pending',
-          timestamp: Date.now(),
-          issueNumber: userIssue.issueNumber
-        });
-        state.pendingTexts.push({
-          id: Date.now().toString(),
-          text: text,
-          snippet: text.slice(0, 80),
-          status: 'pending',
-          timestamp: Date.now(),
-          issueNumber: userIssue.issueNumber
-        });
-        if (state.allowSnippet) {
-          addToEchoPool(text.length > 80 ? text.slice(0, 80) + '...' : text);
-        }
-        showNoMatch(matchResult);
+        showNoMatch(result);
       }
     } catch (err) {
       console.error('fata: executeMatch failed', err);
@@ -1574,7 +1455,7 @@ body {
     try {
       // 关闭 GitHub Issue
       const endpoint = '/api/github/issues/' + issueNumber;
-      const headers = await LLMFallback._buildHMACHeaders(endpoint, HMAC_KEY_RAW);
+      const headers = await APIClient._buildHMACHeaders(endpoint, HMAC_KEY_RAW);
       const resp = await fetch(API_BASE + endpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...headers },
@@ -1620,7 +1501,7 @@ body {
   // 匹配成功后：关闭双方的 pending issue，创建 match issue
   async function closeMatchedIssues(userIssueNumber, matchedNumber, userText, userSnippet, matchedSnippet) {
     // 每次请求单独生成 HMAC 签名，因为路径不同
-    const closeUserHeaders = await LLMFallback._buildHMACHeaders('/api/github/issues/' + userIssueNumber, HMAC_KEY_RAW);
+    const closeUserHeaders = await APIClient._buildHMACHeaders('/api/github/issues/' + userIssueNumber, HMAC_KEY_RAW);
     // 关闭用户自己的 issue
     await fetch(API_BASE + '/api/github/issues/' + userIssueNumber, {
       method: 'PATCH',
@@ -1630,7 +1511,7 @@ body {
 
     // 关闭匹配到的 issue
     if (matchedNumber && matchedNumber !== userIssueNumber) {
-      const closeMatchHeaders = await LLMFallback._buildHMACHeaders('/api/github/issues/' + matchedNumber, HMAC_KEY_RAW);
+      const closeMatchHeaders = await APIClient._buildHMACHeaders('/api/github/issues/' + matchedNumber, HMAC_KEY_RAW);
       await fetch(API_BASE + '/api/github/issues/' + matchedNumber, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...closeMatchHeaders },
@@ -1646,7 +1527,7 @@ body {
       matched_snippet: matchedSnippet || '',
       timestamp: Date.now()
     });
-    const matchHeaders = await LLMFallback._buildHMACHeaders('/api/github/issues', HMAC_KEY_RAW);
+    const matchHeaders = await APIClient._buildHMACHeaders('/api/github/issues', HMAC_KEY_RAW);
     const matchResp = await fetch(API_BASE + '/api/github/issues', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...matchHeaders },
@@ -1664,16 +1545,19 @@ body {
   }
 
   async function generateResonance(textA, textB) {
-    const result = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
-      prompt_type: 'resonance',
-      text_a: textA,
-      text_b: textB,
-      lang: currentLang
-    }, HMAC_KEY_RAW);
-    return result || {
-      resonance: t('match.resonanceFallback'),
-      questions: [t('match.icebreaker1'), t('match.icebreaker2'), t('match.icebreaker3')]
-    };
+    try {
+      return await APIClient.call('/api/resonance', {
+        textA: textA?.slice(0, 500),
+        textB: textB?.slice(0, 500),
+        lang: currentLang
+      }, HMAC_KEY_RAW);
+    } catch (e) {
+      console.warn('fata: resonance API failed, using fallback', e);
+      return {
+        resonance: t('match.resonanceFallback'),
+        questions: [t('match.icebreaker1'), t('match.icebreaker2'), t('match.icebreaker3')]
+      };
+    }
   }
 
   // ===== UI 状态渲染 =====
@@ -1924,13 +1808,8 @@ body {
         // 调用 LLM 生成匹配画像
         try {
           const allAnswers = answers.join('；');
-          const result = await LLMFallback.callWithTimeout(API_BASE + '/api/llm/analyze', {
-            prompt_type: 'interview_compose',
-            text_a: allAnswers,
-            lang: currentLang
-          }, HMAC_KEY_RAW);
-
-          const profile = (result && result.profile) || t('interview.composeFallback');
+          // v3: use local heuristic instead of LLM API
+          const profile = SignalHeuristic.composeInterviewProfile(answers, currentLang) || t('interview.composeFallback');
           const profileHTML = escapeHTML(profile);
           messages.innerHTML = messages.innerHTML.replace(t('interview.composing'), '');
           messages.innerHTML += `
@@ -2235,12 +2114,11 @@ body {
         : (document.getElementById('user-text')?.value || '');
       LowSignalGuide.saveDraft(txt);
     },
-    switchMatchMode: (mode) => { state.matchMode = mode; renderHome(); },
     submit: handleDeliver,
     retryMatch: () => {
       const attempt = state.lastMatchAttempt;
-      if (attempt) {
-        executeMatch(attempt.text, attempt.email, attempt.signalResult);
+      if (attempt && attempt.text) {
+        executeMatch(attempt.text, attempt.email);
       } else {
         handleDeliver();
       }
@@ -2270,7 +2148,9 @@ body {
     console.error('fata init error:', err);
     document.getElementById('app').innerHTML = `
       <div style="text-align:center;padding-top:80px;">
-        <p>${t('init.error')}</p>
+        <p>Something went wrong. Please refresh.</p>
+        <p style="font-size:12px;color:#999;margin-top:16px;">${err.message || 'unknown'}</p>
+        <pre style="font-size:10px;color:#ccc;margin-top:8px;max-width:100%;overflow:auto;">${(err.stack || '').slice(0, 500)}</pre>
       </div>
     `;
   });
