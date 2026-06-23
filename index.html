@@ -32,7 +32,9 @@
   font-src 'self';
   worker-src 'self' blob:;
   media-src 'none';
-  object-src 'none';">
+  object-src 'none';
+  base-uri 'self';
+  form-action 'none';">
 
 <style>
 /* ===== fata · Apple-style Design System ===== */
@@ -1034,9 +1036,15 @@ window.addEventListener('unhandledrejection', function(e) {
     lastMatchAttempt: null     // { text, email } — simplified in v3
   };
 
-  // HMAC 密钥（浏览器端生成，与服务端 HMAC_KEY 相同）
-  let HMAC_KEY_RAW = '';
-  window.HMAC_KEY_RAW = undefined; // 暴露给 MatchEngine 模块访问，首次 HMAC 获取后更新
+  // API token (from bootstrap→PoW→challenge flow, used for all authenticated requests)
+  let apiToken = null;
+  window._fataApiToken = null; // exposed for module access
+
+  function _buildTokenHeaders() {
+    const h = { 'Content-Type': 'application/json' };
+    if (apiToken) h['X-Fata-Submit-Token'] = apiToken;
+    return h;
+  }
 
   // API 基地址
   const API_BASE = 'https://worker.fata.uk';
@@ -1074,11 +1082,7 @@ window.addEventListener('unhandledrejection', function(e) {
       state.pendingTexts = history;
     }
 
-    // v3: No model download. Embedding via Worker API. TF-IDF fallback always available.
-    HMAC_KEY_RAW = '8d1e884f360cf6355964f9956ed67fd83e77eadf86dd94d5180cba505f0864d3';
-    window.HMAC_KEY_RAW = HMAC_KEY_RAW;
-
-    state.apiStatus = 'ok';
+  // API token (from bootstrap→PoW→challenge flow, used for all authenticated requests)
     await MatchEngine.initialize({ mode: 'api', lang: currentLang });
 
     // 初始化回声片段池（匿名展示用）
@@ -1355,20 +1359,29 @@ window.addEventListener('unhandledrejection', function(e) {
     showWaiting(t('submit.sending'));
 
     try {
+      // Run PoW challenge to get api token
+      if (!apiToken) {
+        const powResult = await PoWSolver.fetchChallenge();
+        await PoWSolver.solve(powResult.challengeNonce, powResult.difficulty);
+        const token = await PoWSolver.submitSolution();
+        apiToken = token;
+        window._fataApiToken = token;
+        APIClient.setToken(token);
+      }
+
       // Compute TF-IDF locally as API fallback
       const tfidfEmbedding = await MatchEngine._generateEmbedding(text);
 
-      // Encrypt email before sending
-      const emailEncrypted = await encryptEmail(email);
+      // Compute email hash (for rate limiting/dedup)
       const emailHash = await sha256(email);
 
-      // Call Worker /api/submit
+      // Call Worker /api/submit (plaintext over HTTPS, Worker encrypts for storage)
       const result = await APIClient.call('/api/submit', {
-        text, emailEnc: emailEncrypted, emailHash,
+        text, email, emailHash,
         lang: currentLang,
         allowSnippet: state.allowSnippet,
         tfidfEmbedding
-      }, HMAC_KEY_RAW);
+      });
 
       state.lastMatchAttempt = { text, email };
 
@@ -1406,7 +1419,7 @@ window.addEventListener('unhandledrejection', function(e) {
     });
 
     const endpoint = '/api/github/issues';
-    const hmacHeaders = await APIClient._buildHMACHeaders(endpoint, HMAC_KEY_RAW);
+    const hmacHeaders = _buildTokenHeaders();
     const resp = await fetch(API_BASE + endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...hmacHeaders },
@@ -1428,13 +1441,13 @@ window.addEventListener('unhandledrejection', function(e) {
       showWaiting(t('submit.sending') || t('waiting.feeling'));
 
       const tfidfEmbedding = await MatchEngine._generateEmbedding(text);
-      const emailEncrypted = await encryptEmail(email);
       const emailHash = await sha256(email);
 
       const result = await APIClient.call('/api/submit', {
-        text, emailEnc: emailEncrypted, emailHash,
+        text, email, emailHash,
         lang: currentLang, allowSnippet: state.allowSnippet, tfidfEmbedding
-      }, HMAC_KEY_RAW);
+      });
+
 
       state.lastMatchAttempt = { text, email };
 
@@ -1455,7 +1468,7 @@ window.addEventListener('unhandledrejection', function(e) {
     try {
       // 关闭 GitHub Issue
       const endpoint = '/api/github/issues/' + issueNumber;
-      const headers = await APIClient._buildHMACHeaders(endpoint, HMAC_KEY_RAW);
+      const headers = _buildTokenHeaders();
       const resp = await fetch(API_BASE + endpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...headers },
@@ -1501,7 +1514,7 @@ window.addEventListener('unhandledrejection', function(e) {
   // 匹配成功后：关闭双方的 pending issue，创建 match issue
   async function closeMatchedIssues(userIssueNumber, matchedNumber, userText, userSnippet, matchedSnippet) {
     // 每次请求单独生成 HMAC 签名，因为路径不同
-    const closeUserHeaders = await APIClient._buildHMACHeaders('/api/github/issues/' + userIssueNumber, HMAC_KEY_RAW);
+    const closeUserHeaders = _buildTokenHeaders();
     // 关闭用户自己的 issue
     await fetch(API_BASE + '/api/github/issues/' + userIssueNumber, {
       method: 'PATCH',
@@ -1511,7 +1524,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
     // 关闭匹配到的 issue
     if (matchedNumber && matchedNumber !== userIssueNumber) {
-      const closeMatchHeaders = await APIClient._buildHMACHeaders('/api/github/issues/' + matchedNumber, HMAC_KEY_RAW);
+      const closeMatchHeaders = _buildTokenHeaders();
       await fetch(API_BASE + '/api/github/issues/' + matchedNumber, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...closeMatchHeaders },
@@ -1519,20 +1532,19 @@ window.addEventListener('unhandledrejection', function(e) {
       });
     }
 
-    // 创建 match issue（记录匹配事件）
+    // 创建 match issue（记录匹配事件，不存用户原文）
     const matchBody = JSON.stringify({
       user_issue: userIssueNumber,
       matched_issue: matchedNumber,
-      user_snippet: userSnippet,
-      matched_snippet: matchedSnippet || '',
-      timestamp: Date.now()
+      similarity: 0,
+      matched_at: Date.now()
     });
-    const matchHeaders = await APIClient._buildHMACHeaders('/api/github/issues', HMAC_KEY_RAW);
+    const matchHeaders = _buildTokenHeaders();
     const matchResp = await fetch(API_BASE + '/api/github/issues', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...matchHeaders },
       body: JSON.stringify({
-        title: 'Match: ' + (userText || '').slice(0, 20),
+        title: 'Match-' + userIssueNumber + '-' + matchedNumber,
         body: matchBody,
         labels: ['matched']
       })
@@ -1689,8 +1701,8 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   function showNoMatch(matchResult) {
-    // 展示回声片段
-    const echoHTML = `"${getEchoSnippet()}"`;
+    // 展示回声片段（安全脱敏）
+    const echoHTML = escapeHTML(getEchoSnippet());
 
     document.getElementById('app').innerHTML = `
       <div class="no-match">
@@ -1950,11 +1962,11 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   async function encryptData(data) {
-    // 使用 AES-256-GCM 加密，密钥从 HMAC_KEY_RAW 派生
+    // 使用 AES-256-GCM 加密，密钥从 DATA_ENCRYPTION_KEY 派生
     try {
       const encoder = new TextEncoder();
       const plaintext = JSON.stringify(data);
-      const keyData = encoder.encode(HMAC_KEY_RAW).slice(0, 32); // 256-bit
+      const keyData = encoder.encode(DATA_ENCRYPTION_KEY).slice(0, 32); // 256-bit
       const key = await crypto.subtle.importKey('raw', keyData,
         { name: 'AES-GCM' }, false, ['encrypt']);
       const iv = crypto.getRandomValues(new Uint8Array(12));
