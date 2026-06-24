@@ -1406,6 +1406,8 @@ window.addEventListener('unhandledrejection', function(e) {
     } catch (e) {
       console.error('fata: submit failed', e);
       const isRetryable = e.message.includes('timeout') ||
+                          e.message.includes('Failed to fetch') ||
+                          e.message.includes('Load failed') ||
                           e.message.includes('issue_create_failed') ||
                           e.message.includes('storage_failed') ||
                           e.message.includes('502') ||
@@ -1459,6 +1461,16 @@ window.addEventListener('unhandledrejection', function(e) {
   async function executeMatch(text, email) {
     try {
       showWaiting(t('submit.sending') || t('waiting.feeling'));
+
+      // Run PoW if no valid token
+      if (!apiToken) {
+        const powResult = await PoWSolver.fetchChallenge();
+        await PoWSolver.solve(powResult.challengeNonce, powResult.difficulty);
+        const token = await PoWSolver.submitSolution();
+        apiToken = token;
+        window._fataApiToken = token;
+        APIClient.setToken(token);
+      }
 
       const tfidfEmbedding = await MatchEngine._generateEmbedding(text);
       const emailHash = await sha256(email);
@@ -2144,18 +2156,18 @@ window.addEventListener('unhandledrejection', function(e) {
     },
     submit: handleDeliver,
     retryMatch: () => {
-      // Recover draft from sessionStorage if available
+      // Recover draft from sessionStorage
       const draftText = sessionStorage.getItem('fata_draft_text');
       const draftEmail = sessionStorage.getItem('fata_draft_email');
+      // Render home first so textarea exists
+      renderHome();
       if (draftText) {
-        document.getElementById('user-text').value = draftText;
+        setTimeout(() => {
+          const ta = document.getElementById('user-text');
+          if (ta) ta.value = draftText;
+        }, 50);
         state.lastMatchAttempt = { text: draftText, email: draftEmail };
-      }
-      const attempt = state.lastMatchAttempt;
-      if (attempt && attempt.text) {
-        executeMatch(attempt.text, attempt.email);
-      } else {
-        handleDeliver();
+        setTimeout(() => executeMatch(draftText, draftEmail), 100);
       }
     },
     ui: {
