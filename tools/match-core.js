@@ -308,7 +308,7 @@ function calculateScore(userEmb, otherEmb, userIntent, otherIntent, lang, userTe
   // 双向等待全局惩罚：关键需求冲突时，其他维度适当降权（使用归一化后的 need）
   const uNeed = normalizeNeed((uIntent && uIntent.need) || '', lang);
   const oNeed = normalizeNeed((oIntent && oIntent.need) || '', lang);
-  if (uNeed === L.need.be_heard && oNeed === L.need.be_heard) score *= 0.85;
+  if (uNeed === L.need.be_heard && oNeed === L.need.be_heard) score *= 0.70;
 
   return score;
 }
@@ -338,6 +338,11 @@ function calculateIntentCompatibility(user, other, lang) {
   if (needScore < 0.5 &&
       ((uNeed === L.need.casual_chat && oNeed === L.need.deep_discussion) || (uNeed === L.need.deep_discussion && oNeed === L.need.casual_chat))) {
     needScore = 0.4;
+  }
+  // be_heard vs casual_chat: conflicting needs — one wants depth, the other wants lightness
+  if (needScore < 0.5 &&
+      ((uNeed === L.need.be_heard && oNeed === L.need.casual_chat) || (uNeed === L.need.casual_chat && oNeed === L.need.be_heard))) {
+    needScore = 0.2;
   }
   total += needScore * ch.need_complement.value;
 
@@ -509,9 +514,9 @@ function getEffectiveThreshold(pendingCount, lang) {
   return baseThreshold + cooling + langOffset;
 }
 
-// TF-IDF 向量（降级用），根据语言选择中文 char-bigram 或英文 word-bigram
+// TF-IDF 向量（降级用），统一使用字符 bigram
+// 英文同样使用 char-bigram（不去空格），密度远高于 word-bigram
 function textToVector(text, lang) {
-  if (lang === 'en') return wordBigramVector(text);
   return charBigramVector(text);
 }
 
@@ -528,7 +533,10 @@ function wordBigramVector(text) {
   for (const [bg, cnt] of Object.entries(bigrams)) {
     let h = 0;
     for (let i = 0; i < bg.length; i++) h = ((h << 5) - h + bg.charCodeAt(i)) | 0;
-    vec[Math.abs(h) % 384] += cnt / total;
+    // Multi-hash: map each bigram to 7 positions for denser distribution
+    for (let i = 0; i < 7; i++) {
+      vec[Math.abs((h + i * 53) % 384)] += cnt / total;
+    }
   }
   let norm = 0;
   for (let i = 0; i < 384; i++) norm += vec[i] * vec[i];

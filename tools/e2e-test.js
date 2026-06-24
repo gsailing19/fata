@@ -203,7 +203,7 @@ async function main() {
 
   if (!issueA) {
     console.log('\n❌ Phase 1 失败，终止测试');
-    return;
+    process.exit(1);
   }
 
   await sleep(4000); // 等 GitHub API 索引完成
@@ -221,7 +221,7 @@ async function main() {
 
   if (!issueB) {
     console.log('\n❌ Phase 2 失败，终止测试');
-    return;
+    process.exit(1);
   }
 
   // 用户 B 的 embedding 与用户 A 的 embedding 做相似度计算

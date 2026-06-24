@@ -42,7 +42,7 @@ async function generateEmbedding(text, lang, mode) {
  */
 async function generateEmbeddings(texts, lang, mode) {
   if (mode === 'bigram' || !mode) {
-    return texts.map(t => lang === 'en' ? wordBigramVector(t) : charBigramVector(t));
+    return texts.map(t => charBigramVector(t));
   }
   if (mode === 'transformers') {
     return _embedTransformers(texts, lang);
