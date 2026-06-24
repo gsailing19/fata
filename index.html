@@ -711,6 +711,7 @@ window.addEventListener('unhandledrejection', function(e) {
       'waiting.comparing': '正在将你的频率和池子里的文字进行对比...',
 
       'submit.sending': '正在分析你的文字...',
+      'submit.retryable': '服务暂时繁忙，稍等再试就好',
 
       'match.resonanceFallback': '你们在此刻的频率很接近。',
       'match.icebreaker1': '你当时在想什么？',
@@ -794,6 +795,10 @@ window.addEventListener('unhandledrejection', function(e) {
       'error.networkDesc': '网络不太稳定，匹配没完成。点下面重试一下就好。',
       'error.transient': '服务暂时繁忙',
       'error.transientDesc': '服务器一瞬间太忙了，点重试就好，你的文字已经保存不会丢。',
+      'error.rateLimited': '稍等一下',
+      'error.rateLimitedDesc': '刚刚提交太快了，请等 {n} 秒后再试。',
+      'error.timeout': '网络有点慢',
+      'error.timeoutDesc': '请求超时了，你的文字已保存，等会儿重试就好。',
       'error.retry': '重试',
       'error.back': '返回',
 
@@ -870,6 +875,7 @@ window.addEventListener('unhandledrejection', function(e) {
       'waiting.comparing': 'Comparing your frequency with the pool...',
 
       'submit.sending': 'Analyzing your words...',
+      'submit.retryable': 'Service is momentarily busy, try again shortly',
 
       'match.resonanceFallback': 'Your frequencies are close right now.',
       'match.icebreaker1': 'What were you thinking about?',
@@ -953,6 +959,10 @@ window.addEventListener('unhandledrejection', function(e) {
       'error.networkDesc': 'The network is unstable. Tap below to retry.',
       'error.transient': 'Service is busy',
       'error.transientDesc': 'The server is momentarily overloaded. Tap retry — your text is saved.',
+      'error.rateLimited': 'Hold on a moment',
+      'error.rateLimitedDesc': 'You submitted too quickly. Please wait {n} seconds before trying again.',
+      'error.timeout': 'Network is slow',
+      'error.timeoutDesc': 'Request timed out. Your text is saved — try again shortly.',
       'error.retry': 'Retry',
       'error.back': 'Back',
 
@@ -1405,16 +1415,24 @@ window.addEventListener('unhandledrejection', function(e) {
       }
     } catch (e) {
       console.error('fata: submit failed', e);
-      const isRetryable = e.message.includes('timeout') ||
-                          e.message.includes('Failed to fetch') ||
-                          e.message.includes('Load failed') ||
-                          e.message.includes('issue_create_failed') ||
-                          e.message.includes('storage_failed') ||
-                          e.message.includes('502') ||
-                          e.message.includes('503');
+      const errStr = (e.message || '') + (e.cause ? ' ' + e.cause : '');
+      const isRateLimited = errStr.includes('rate_limited') || errStr.includes('429');
+      const isTimeout = errStr.includes('timeout') || errStr.includes('AbortError');
+      const isRetryable = !isRateLimited && (
+        isTimeout ||
+        errStr.includes('Failed to fetch') ||
+        errStr.includes('Load failed') ||
+        errStr.includes('issue_create_failed') ||
+        errStr.includes('storage_failed') ||
+        errStr.includes('502') ||
+        errStr.includes('503')
+      );
       showMatchError({
-        message: isRetryable ? t('submit.retryable') : e.message,
-        retryable: isRetryable
+        message: isRateLimited ? t('error.rateLimited') : (isRetryable ? t('submit.retryable') : t('error.network')),
+        retryable: isRetryable || isRateLimited,
+        cooldownSeconds: isRateLimited ? 60 : 0,
+        rateLimited: isRateLimited,
+        timeout: isTimeout && !isRateLimited
       });
     }
   }
@@ -1763,20 +1781,60 @@ window.addEventListener('unhandledrejection', function(e) {
 
   function showMatchError(err, stack) {
     const errObj = (err && typeof err === 'object') ? err : { message: String(err || ''), retryable: true };
-    const errMsg = errObj.message || '';
     const retryable = errObj.retryable !== false;
-    const stackLine = stack ? stack.split('\n').slice(1, 4).map(s => s.trim()).join(' → ') : '';
+    const cooldown = errObj.cooldownSeconds || 0;
+    const isRateLimited = errObj.rateLimited === true;
+    const isTimeout = errObj.timeout === true;
+
+    let mainText, subText;
+    if (isRateLimited) {
+      mainText = t('error.rateLimited');
+      subText = t('error.rateLimitedDesc').replace('{n}', String(cooldown));
+    } else if (isTimeout) {
+      mainText = t('error.timeout');
+      subText = t('error.timeoutDesc');
+    } else if (retryable) {
+      mainText = t('error.transient');
+      subText = t('error.transientDesc');
+    } else {
+      mainText = t('error.network');
+      subText = t('error.networkDesc');
+    }
+
+    const btnId = 'btn-retry-' + Date.now();
     document.getElementById('app').innerHTML = `
       <div class="no-match">
-        <p class="no-match-main">${retryable ? t('error.transient') : t('error.network')}</p>
-        <p class="no-match-sub">${retryable ? t('error.transientDesc') : t('error.networkDesc')}</p>
-        ${errMsg ? `<p style="font-size:11px;color:var(--text-whisper);font-family:var(--font-mono);word-break:break-all;margin:8px 0;">${errMsg}</p>` : ''}
+        <p class="no-match-main">${mainText}</p>
+        <p class="no-match-sub" id="retry-sub-text">${subText}</p>
         <div class="actions-row" style="margin-top:24px;">
-          <button class="btn-email" onclick="fata.retryMatch()">${t('error.retry')}</button>
+          <button class="btn-email" id="${btnId}" ${cooldown > 0 ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>${cooldown > 0 ? t('error.retry') + ' (' + cooldown + 's)' : t('error.retry')}</button>
           <button class="btn-secondary" onclick="fata.renderHome()">${t('error.back')}</button>
         </div>
       </div>
     `;
+
+    // Cooldown timer
+    if (cooldown > 0) {
+      let remaining = cooldown;
+      const btn = document.getElementById(btnId);
+      const subEl = document.getElementById('retry-sub-text');
+      const timer = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+          clearInterval(timer);
+          if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; btn.textContent = t('error.retry'); }
+          if (subEl) subEl.textContent = isRateLimited
+            ? t('error.rateLimitedDesc').replace('{n}', String(cooldown))
+            : subText;
+        } else {
+          if (btn) btn.textContent = t('error.retry') + ' (' + remaining + 's)';
+          if (subEl && isRateLimited) subEl.textContent = t('error.rateLimitedDesc').replace('{n}', String(remaining));
+        }
+      }, 1000);
+      if (btn) btn.addEventListener('click', () => { clearInterval(timer); fata.retryMatch(); });
+    } else if (retryable) {
+      document.getElementById(btnId).addEventListener('click', fata.retryMatch);
+    }
   }
 
   // Draft recovery for retry — handled in window.fata.retryMatch
