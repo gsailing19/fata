@@ -27,7 +27,7 @@
   content="default-src 'self';
   script-src 'self' 'unsafe-inline';
   style-src 'self' 'unsafe-inline';
-  connect-src 'self' https://worker.fata.uk https://api.github.com;
+  connect-src 'self' https://fata.uk https://api.github.com;
   img-src 'self' data:;
   font-src 'self';
   worker-src 'self' blob:;
@@ -1061,7 +1061,7 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   // API 基地址
-  const API_BASE = 'https://worker.fata.uk';
+  const API_BASE = 'https://fata.uk';
 
   // ===== 工具函数 =====
 
@@ -1201,6 +1201,10 @@ window.addEventListener('unhandledrejection', function(e) {
             <circle cx="60" cy="10" r="1.5" fill="#c47a4a" opacity="0.6"/>
           </svg>
         </div>
+
+        <p class="worldcup-banner" style="text-align:center;font-size:14px;color:var(--warm);margin:12px 0 0;opacity:0.8;">
+          ⚽ Watching the World Cup alone? Write how you feel after the match — find a stranger on the same frequency.
+        </p>
 
         <div class="landing-editor">
           <textarea id="user-text" placeholder="${t('landing.placeholder')}"></textarea>

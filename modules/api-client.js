@@ -7,7 +7,7 @@
 
 const APIClient = {
   config: {
-    baseURL: 'https://worker.fata.uk',
+    baseURL: 'https://fata.uk',
     timeoutMs: 25000
   },
 
