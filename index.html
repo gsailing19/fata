@@ -1380,6 +1380,9 @@ window.addEventListener('unhandledrejection', function(e) {
     sessionStorage.setItem('fata_draft_text', text);
     sessionStorage.setItem('fata_draft_email', email);
 
+    // Probe API connectivity before PoW (caches working base URL)
+    try { await APIClient.getBaseURL(); } catch (_) { /* will surface in PoW step */ }
+
     try {
       // Run PoW challenge to get api token
       if (!apiToken) {

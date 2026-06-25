@@ -51,8 +51,8 @@ const APIClient = {
     return null;
   },
 
-  /** Get the working base URL (probes primary then fallback) */
-  async _getBaseURL() {
+  /** Get the working base URL (probes primary then fallback). Public for PoWSolver use. */
+  async getBaseURL() {
     if (this._activeBase) return this._activeBase;
     if (this._probing) return this._probing;
 
@@ -73,7 +73,7 @@ const APIClient = {
 
   /** Make an API call with timeout + token auth */
   async call(endpoint, payload) {
-    const base = await this._getBaseURL();
+    const base = await this.getBaseURL();
     const url = `${base}${endpoint}`;
     const headers = this._buildHeaders();
 

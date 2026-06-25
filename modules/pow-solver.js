@@ -24,7 +24,8 @@ const PoWSolver = {
    * @returns {Promise<{challengeNonce: string, difficulty: number}>}
    */
   async fetchChallenge() {
-    const resp = await fetch('https://worker.fata.uk/api/bootstrap', { method: 'POST', credentials: 'include' });
+    const base = await APIClient.getBaseURL();
+    const resp = await fetch(`${base}/api/bootstrap`, { method: 'POST', credentials: 'include' });
     if (!resp.ok) throw new Error(`bootstrap failed: ${resp.status}`);
     const data = await resp.json();
     this.state.challengeNonce = data.challengeNonce;
@@ -82,7 +83,8 @@ const PoWSolver = {
    */
   async submitSolution() {
     if (!this.state.solution) throw new Error('no solution to submit');
-    const resp = await fetch('https://worker.fata.uk/api/challenge', {
+    const base = await APIClient.getBaseURL();
+    const resp = await fetch(`${base}/api/challenge`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
