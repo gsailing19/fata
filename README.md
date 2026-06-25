@@ -6,118 +6,114 @@
 
 > *Fata viam invenient.* — Fate will find a way.
 
-English | [中文](README_ZH.md)
+**[fata.uk](https://fata.uk)** — open a webpage, write a few lines, find a stranger whose emotional frequency matches yours. Then talk in your **own email**. No app. No signup. No server.
 
 ---
-
-You open a webpage, write a few lines. AI reads your words in the browser, finds another stranger whose frequency matches yours. Then you talk — using your **own email**.
 
 ## What is fata
 
-fata is an open-source, serverless tool for meeting strangers through writing. AI runs entirely in your browser — it analyzes your text's emotional frequency, finds someone whose words resonate, and connects you. No sign-up. No database. No chat history. Communication happens in your own email.
+fata matches strangers by emotional frequency, not by photos or tags. You write what's on your mind. A signal heuristic in your browser scores your text instantly. A Cloudflare Worker generates a BGE-M3 embedding, encrypts it, and finds your match in the pool. Matched users get each other's email address. Communication happens entirely in your own inbox — fata never touches your messages.
 
-fata 是一个开源的无服务器陌生人匹配工具。写一段话，浏览器里的 AI 分析你的文字情绪频率，找到另一个与你共振的人。无需注册，没有数据库，没有聊天记录。通信在你自己的邮箱里进行。
+**fata = fate + data.** Two strangers meeting — part AI matching, part serendipity.
 
 ---
 
-## Why trust fata
+## Why people trust fata
 
 **fata *cannot* read your conversations — not "promises not to", it's technically incapable.**
 
-- **Your words never leave your browser.** The AI model (Transformers.js + bge-small-zh-v1.5, 24MB) runs entirely locally. See `modules/model-loader.js`
-- **The matching pool is public GitHub Issues.** Your encrypted text waits in an Issue. When matched, the Issue closes. Like a padlocked box on a public bulletin board — and the padlock key never leaves the server. See `config/github-setup.md`
-- **High-risk text never enters the pool.** When AI detects self-harm signals, fata creates no Issue, makes no match, keeps no record — only shows support resources. See `modules/safety-handler.js`
-- **Communication happens in your own email.** fata sends only one notification (via Resend). After that, you talk in your email client. fata sees none of it. See `modules/resend-retry.js`
-- **No servers. No database. No chat history.** fata is a static HTML file + one CF Worker proxy. There's nothing to hack, no chat logs to subpoena.
+- **Your text is encrypted before it enters the pool.** AES-GCM with key separation (HMAC_KEY ≠ ENCRYPTION_KEY). Even if GitHub Issues leak, ciphertext is useless.
+- **Zero public inference endpoints.** LLM calls are Worker-internal only. There is no `/api/llm` route. Model API abuse is prevented by design.
+- **PoW + session-bound token auth.** Every submission requires solving a SHA-256 challenge. Tokens are single-use, IP-bound, and expire. Rate limits are fail-closed.
+- **Communication stays in your email.** fata sends one notification (via Resend), hands over the matched email address, and exits. No chat server. No database of messages.
+- **The architecture is the privacy policy.** Static HTML + Cloudflare Pages + GitHub Issues as encrypted pool. There's nothing to hack, no database to subpoena, no logs to leak.
+
+[Security incident report](INCIDENT-2026-06-20.md) · [Prevention rules](SECURITY-PREVENTION.md) · [Daily audit](tools/audit.js)
 
 ---
 
 ## How it works
 
-1. Open fata.uk
-2. Write — what's on your mind, what keeps you up, the color outside your window
-3. AI analyzes your text's signal density and emotional frequency
-4. If your text is too brief, fata gently invites you to write more (no judgment, no rejection)
-5. Your encrypted text enters the matching pool
-6. When matched, both sides get an email with the other's address and an icebreaker
-7. Open your email client and write to them
+```
+You write text
+  → Safety check (browser-side)
+  → Signal density score (browser heuristic, sub-millisecond)
+  → PoW challenge → session token
+  → Worker: BGE-M3 embedding (1024-dim) via SiliconFlow
+  → AES-GCM encrypt → GitHub Issues pool
+  → Multi-channel scoring + MMR diversity rerank
+  → Match found: close both Issues, generate resonance via LLM, email via Resend
+  → You talk in your own inbox
+```
+
+- **First visit**: ~100ms (no model download)
+- **Matching**: Chinese F1=94.1% / English F1=80.0% (see [algo tests](tools/algo-test.js))
+- **Invariants**: 54/54 assertions pass (see [invariant tests](tools/invariant-tests.js))
 
 ---
 
 ## Tech stack
 
-| Layer | Tech | Runs on |
-|---|------|---------|
-| AI inference | Transformers.js + bge-small-zh-v1.5 (24MB) | Browser (local) |
-| Matching engine | Multi-channel scoring + MMR re-rank | CF Worker |
-| Matching pool | GitHub Issues API | CF Worker proxy |
-| Intent parsing | LLM API (optional, opt-in deep match) | CF Worker proxy |
-| Email notification | Resend | CF Worker proxy |
-| Communication | SMTP / IMAP | User's own email |
+| Layer | Tech | Where |
+|---|------|--------|
+| Signal density + intent parse | Heuristic engine | Browser (instant) |
+| Semantic embedding | BGE-M3 (SiliconFlow API) | CF Worker |
+| Matching algorithm | Multi-channel scoring + MMR | CF Worker |
+| Encrypted storage | AES-GCM + GitHub Issues | CF Worker proxy |
+| Resonance description | DeepSeek-V4 (Worker-internal) | CF Worker |
+| Email delivery | Resend (3,000/month free) | CF Worker proxy |
+| Auth + anti-abuse | PoW + token + HMAC + rate limit KV | CF Worker |
+| Frontend | Single static HTML + vanilla JS | Cloudflare Pages |
+
+Zero browser model download. Zero public API keys. Zero user database.
 
 ---
 
 ## Self-host
 
-fata is a static HTML file. You don't need a server.
+fata is a single static HTML file + one Cloudflare Worker.
 
-### 1. Prerequisites
+### Prerequisites
 
-- GitHub account (for Issues as matching pool)
-- Cloudflare account (for Worker proxy)
-- Resend account (for notification emails, 3,000/month free)
-- Domain (optional — Cloudflare Pages default domain works)
+- GitHub account (Issues as matching pool)
+- Cloudflare account (Workers + Pages + KV)
+- Resend account (email delivery, free tier 3,000/month)
+- SiliconFlow account (BGE-M3 embeddings)
 
-### 2. Set up GitHub Issues
-
-See `config/github-setup.md` for creating Labels and Fine-grained PAT.
-
-### 3. Configure Cloudflare Worker
+### Quick start
 
 ```bash
-cp config/wrangler.toml.example config/wrangler.toml
-# Edit wrangler.toml with your domain and GitHub username
+# 1. Set up GitHub labels & PAT
+#    See config/github-setup.md
 
-cp config/worker.example.js config/worker.js
-# Edit worker.js, replace SYSTEM_PROMPTS with your prompt text
+# 2. Configure and deploy Worker
+cd config
+cp wrangler.toml.example wrangler.toml   # Edit with your repo details
+npx wrangler secret put GITHUB_PAT
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put SILICONFLOW_API_KEY
+npx wrangler secret put HMAC_KEY
+npx wrangler secret put ENCRYPTION_KEY
+npx wrangler deploy
 
-cp config/algorithm-config.example.json config/algorithm-config.json
-# Edit algorithm-config.json with your parameter values
-
-# Inject secrets
-wrangler secret put GITHUB_PAT
-wrangler secret put DEEPSEEK_API_KEY
-wrangler secret put RESEND_API_KEY
-wrangler secret put HMAC_KEY
-wrangler secret put ENCRYPTION_KEY
-
-# Deploy
-cd config && npx wrangler deploy
-```
-
-### 4. Deploy frontend
-
-```bash
+# 3. Deploy frontend
 ./deploy.sh
-```
-
-This copies only public files to `dist/` and deploys to Cloudflare Pages. The full list:
-
-```
-index.html  privacy.html  privacy-en.html
-modules/*.js  (6 files: model-loader, safety-handler, llm-fallback, resend-retry, low-signal-guide, match-engine)
-logo/logo.svg  logo/logo-unified-v2.png  logo/logo-horizontal.svg
-manifest.json  _redirects  _headers
 ```
 
 ---
 
 ## Design philosophy
 
-- **Async-first.** No push, no online status, no instant messaging. Waiting reframed as anticipation.
-- **Invisible AI.** AI reads, matches, generates a resonance description — then exits. The user never knows AI was there.
-- **Architecture is privacy.** "We don't collect data" is not a promise — it's the architecture.
-- **No company, no ICP filing, no servers.** A three-person team is three people. A one-person tool is one person.
+- **Async-first.** No push. No online status. No instant messaging. Waiting is anticipation.
+- **AI as bridge, not companion.** AI reads, matches, describes resonance — then exits. You never see a chatbot.
+- **Architecture is privacy.** "We don't collect data" is a fact about the architecture, not a promise.
+- **Email is the product.** No in-app chat. Communication returns to the most universal, private tool you already own.
+
+---
+
+## What people are saying
+
+"Like Slowly but with AI that actually reads your words" · "The anti-Omegle — slow, thoughtful, asynchronous" · "A webpage that introduces you to someone and then disappears"
 
 ---
 
