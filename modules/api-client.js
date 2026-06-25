@@ -12,7 +12,7 @@ const APIClient = {
   config: {
     baseURL: 'https://fata.uk',
     fallbackURL: 'https://fata-api-proxy.gsailing19.workers.dev',
-    timeoutMs: 25000
+    timeoutMs: 45000
   },
 
   _apiToken: null,

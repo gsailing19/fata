@@ -668,13 +668,13 @@ window.addEventListener('unhandledrejection', function(e) {
    * 加载顺序: config → modules → UI 初始化
    */
 
-  import { SignalHeuristic } from './modules/signal-heuristic.js?v=4';
-  import { PoWSolver } from './modules/pow-solver.js?v=4';
-  import { APIClient } from './modules/api-client.js?v=4';
-  import { SafetyHandler } from './modules/safety-handler.js?v=2';
-  import { LowSignalGuide } from './modules/low-signal-guide.js?v=2';
-  import { ResendRetry } from './modules/resend-retry.js?v=2';
-  import { MatchEngine } from './modules/match-engine.js?v=4';
+  import { SignalHeuristic } from './modules/signal-heuristic.js?v=6';
+  import { PoWSolver } from './modules/pow-solver.js?v=6';
+  import { APIClient } from './modules/api-client.js?v=6';
+  import { SafetyHandler } from './modules/safety-handler.js?v=4';
+  import { LowSignalGuide } from './modules/low-signal-guide.js?v=4';
+  import { ResendRetry } from './modules/resend-retry.js?v=4';
+  import { MatchEngine } from './modules/match-engine.js?v=6';
 
   // ===== i18n 国际化 =====
   const I18N = {
@@ -1349,6 +1349,8 @@ window.addEventListener('unhandledrejection', function(e) {
     const email = await getOrAskEmail();
     if (!email) return;
 
+    console.log('fata: phase1-start', { textLen: text.length, lang: currentLang });
+
     // Phase 1: Signal density + safety check (browser-side, instant)
     showWaiting(t('waiting.feeling'));
     const signalResult = SignalHeuristic.computeSignalDensity(text, currentLang);
@@ -1373,6 +1375,8 @@ window.addEventListener('unhandledrejection', function(e) {
       }
     }
 
+    console.log('fata: phase1-done', { score: signalResult.score });
+
     // Phase 2: Full submit (PoW → Worker handles embedding + matching)
     showWaiting(t('submit.sending'));
 
@@ -1382,6 +1386,8 @@ window.addEventListener('unhandledrejection', function(e) {
 
     // Probe API connectivity before PoW (caches working base URL)
     try { await APIClient.getBaseURL(); } catch (_) { /* will surface in PoW step */ }
+
+    console.log('fata: pow-start', { base: APIClient._activeBase, hasToken: !!apiToken });
 
     try {
       // Run PoW challenge to get api token
@@ -1393,6 +1399,8 @@ window.addEventListener('unhandledrejection', function(e) {
         window._fataApiToken = token;
         APIClient.setToken(token);
       }
+
+      console.log('fata: submit-start');
 
       // Compute TF-IDF locally as API fallback
       const tfidfEmbedding = await MatchEngine._generateEmbedding(text);
@@ -1421,7 +1429,12 @@ window.addEventListener('unhandledrejection', function(e) {
         showNoMatch(result);
       }
     } catch (e) {
-      console.error('fata: submit failed', e);
+      console.error('fata: submit failed', {
+        name: e.name,
+        message: e.message,
+        cause: e.cause?.message || e.cause,
+        stack: e.stack?.slice(0, 400)
+      });
       const errStr = (e.message || '') + (e.cause ? ' ' + e.cause : '');
       const isRateLimited = errStr.includes('rate_limited') || errStr.includes('429');
       const isTimeout = errStr.includes('timeout') || errStr.includes('AbortError');
@@ -1515,8 +1528,26 @@ window.addEventListener('unhandledrejection', function(e) {
         showNoMatch(result);
       }
     } catch (err) {
-      console.error('fata: executeMatch failed', err);
-      showMatchError(err, err.stack || '');
+      console.error('fata: executeMatch failed', { name: err.name, message: err.message, cause: err.cause?.message || err.cause });
+      const errStr = (err.message || '') + (err.cause ? ' ' + err.cause : '');
+      const isRateLimited = errStr.includes('rate_limited') || errStr.includes('429');
+      const isTimeout = errStr.includes('timeout') || errStr.includes('AbortError');
+      const isRetryable = !isRateLimited && (
+        isTimeout ||
+        errStr.includes('Failed to fetch') ||
+        errStr.includes('Load failed') ||
+        errStr.includes('issue_create_failed') ||
+        errStr.includes('storage_failed') ||
+        errStr.includes('502') ||
+        errStr.includes('503')
+      );
+      showMatchError({
+        message: isRateLimited ? t('error.rateLimited') : (isRetryable ? t('submit.retryable') : t('error.network')),
+        retryable: isRetryable || isRateLimited,
+        cooldownSeconds: isRateLimited ? 60 : 0,
+        rateLimited: isRateLimited,
+        timeout: isTimeout && !isRateLimited
+      });
     }
   }
 
@@ -1792,6 +1823,8 @@ window.addEventListener('unhandledrejection', function(e) {
     const cooldown = errObj.cooldownSeconds || 0;
     const isRateLimited = errObj.rateLimited === true;
     const isTimeout = errObj.timeout === true;
+    // Caller-provided message takes priority over generic text
+    const callerMsg = (errObj && typeof errObj.message === 'string' && errObj.message) || '';
 
     let mainText, subText;
     if (isRateLimited) {
@@ -1801,11 +1834,11 @@ window.addEventListener('unhandledrejection', function(e) {
       mainText = t('error.timeout');
       subText = t('error.timeoutDesc');
     } else if (retryable) {
-      mainText = t('error.transient');
-      subText = t('error.transientDesc');
+      mainText = callerMsg || t('error.transient');
+      subText = callerMsg ? '' : t('error.transientDesc');
     } else {
-      mainText = t('error.network');
-      subText = t('error.networkDesc');
+      mainText = callerMsg || t('error.network');
+      subText = callerMsg ? '' : t('error.networkDesc');
     }
 
     const btnId = 'btn-retry-' + Date.now();
@@ -2082,6 +2115,22 @@ window.addEventListener('unhandledrejection', function(e) {
       return btoa(String.fromCharCode(...combined));
     } catch (e) {
       console.error('fata: encryptData failed', e);
+      throw e;
+    }
+  }
+
+  async function decryptAES(encrypted, keyBytes) {
+    // 与 Worker 端 decryptAES 格式一致: base64(iv(12字节) + ciphertext)
+    try {
+      const raw = Uint8Array.from(atob(encrypted), c => c.charCodeAt(0));
+      const iv = raw.slice(0, 12);
+      const ct = raw.slice(12);
+      const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']);
+      const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+      const text = new TextDecoder().decode(dec);
+      try { return JSON.parse(text); } catch { return text; }
+    } catch (e) {
+      console.error('fata: decryptAES failed', e);
       throw e;
     }
   }
