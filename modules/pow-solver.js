@@ -24,8 +24,7 @@ const PoWSolver = {
    * @returns {Promise<{challengeNonce: string, difficulty: number}>}
    */
   async fetchChallenge() {
-    const base = await APIClient.getBaseURL();
-    const resp = await fetch(`${base}/api/bootstrap`, { method: 'POST' });
+    const resp = await fetch(`${APIClient.config.baseURL}/api/bootstrap`, { method: 'POST' });
     if (!resp.ok) throw new Error(`bootstrap failed: ${resp.status}`);
     const data = await resp.json();
     this.state.challengeNonce = data.challengeNonce;
@@ -83,8 +82,7 @@ const PoWSolver = {
    */
   async submitSolution() {
     if (!this.state.solution) throw new Error('no solution to submit');
-    const base = await APIClient.getBaseURL();
-    const resp = await fetch(`${base}/api/challenge`, {
+    const resp = await fetch(`${APIClient.config.baseURL}/api/challenge`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
