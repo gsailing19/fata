@@ -25,6 +25,17 @@ AGENTS.md
 todo.md
 config/github-setup.md
 
+# --- 安全事故报告（内部保留，不公开） ---
+INCIDENT-*.md
+SECURITY-HMAC-*.md
+
+# --- 内部运维文档（不公开） ---
+production-loops.md
+
+# --- 内部开发工具（不对外暴露） ---
+tools/inject-en-bootstrap.js
+tools/inject-en-bootstrap-bge.py
+
 # --- 内部开发（设计草稿、配置模板） ---
 logo/logo-v*.html
 logo/logo-showcase.html

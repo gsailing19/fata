@@ -28,7 +28,7 @@ fata matches strangers by emotional frequency, not by photos or tags. You write 
 - **Communication stays in your email.** fata sends one notification (via Resend), hands over the matched email address, and exits. No chat server. No database of messages.
 - **The architecture is the privacy policy.** Static HTML + Cloudflare Pages + GitHub Issues as encrypted pool. There's nothing to hack, no database to subpoena, no logs to leak.
 
-[Security incident report](INCIDENT-2026-06-20.md) · [Prevention rules](SECURITY-PREVENTION.md) · [Daily audit](tools/audit.js)
+[Prevention rules](SECURITY-PREVENTION.md)
 
 ---
 

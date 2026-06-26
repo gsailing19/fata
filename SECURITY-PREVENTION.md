@@ -1,6 +1,6 @@
 # fata 安全预防措施清单
 
-> 提取自 [IR-2026-001](INCIDENT-2026-06-20.md) — LLM 端点白嫖事故。每条规则对应一个具体的设计缺陷。
+> 提取自一次 LLM 端点安全事故。每条规则对应一个具体的设计缺陷。
 
 ---
 
@@ -39,31 +39,17 @@ Worker 中不得存在"透传"第三方付费 API 的通用代理路由。LLM、
 
 ### 规则 4：限流系统必须 fail-closed
 
-```javascript
-// 正确：KV 不可用 → 拒绝请求
-async function checkRateLimit(env, key, max, window) {
-  const kv = env.RATE_LIMIT_KV;
-  if (!kv) return false;     // ← fail-closed
-  
-  try {
-    // ... 检查逻辑 ...
-  } catch (e) {
-    return false;             // ← fail-closed
-  }
-}
-```
-
 安全机制故障时，拒绝请求（fail-closed）是唯一正确的选择。用户体验可以通过异步重试优化，但不能以放行作为降级策略。
 
 ### 规则 5：多层级限流
 
 仅靠"每分钟 N 次"不够。需要叠加：
 
-| 层级 | 粒度 | 示例阈值 | 目的 |
-|------|------|---------|------|
-| 频率限制 | 每分钟/IP | 20 req/min | 防突发 |
-| 容量限制 | 每日/IP | 50,000 token | 防持续消耗 |
-| 关联限制 | LLM调用/Issue创建 比值 | >5:1 触发告警 | 检测异常模式 |
+| 层级 | 粒度 | 目的 |
+|------|------|------|
+| 频率限制 | 每分钟/IP | 防突发 |
+| 容量限制 | 每日/IP | 防持续消耗 |
+| 关联限制 | LLM调用/Issue创建 比值 | 检测异常模式 |
 
 ---
 
@@ -112,11 +98,3 @@ async function checkRateLimit(env, key, max, window) {
 - [ ] 限流逻辑是否 fail-closed？（规则 4）
 - [ ] 新增的 API key 是否按服务隔离？（规则 6）
 - [ ] 异常检测是否覆盖了新端点？（规则 8）
-
----
-
-## 相关文件
-
-- `INCIDENT-2026-06-20.md` — 事故完整报告
-- `CLAUDE.md` — 项目元信息（含事故记录和本文档指针）
-- `SECURITY-HMAC-LLM-LEAK.md` — 漏洞发现时的原始记录

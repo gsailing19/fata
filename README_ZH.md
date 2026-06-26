@@ -28,7 +28,7 @@ fata 通过情绪频率匹配陌生人，不靠照片或标签。你写下此刻
 - **通信在你自己的邮箱里。** fata 只发一封通知邮件（通过 Resend），交出对方邮箱地址后即退场。没有聊天服务器，没有消息数据库。
 - **架构即隐私。** 静态 HTML + Cloudflare Pages + GitHub Issues 加密池。没有数据库可被拖库，没有聊天记录可被调取，没有日志可泄露。
 
-[安全事故报告](INCIDENT-2026-06-20.md) · [预防规则](SECURITY-PREVENTION.md) · [每日审计](tools/audit.js)
+[预防规则](SECURITY-PREVENTION.md)
 
 ## 如何使用
 
