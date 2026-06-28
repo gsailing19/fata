@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>关于 fata</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --text: #1d1d1f;
+    --text-subtle: #86868b;
+    --text-whisper: #aeaeb2;
+    --border: #d2d2d7;
+    --warm: #c47a4a;
+    --font-serif: Georgia, 'Noto Serif SC', serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    --max-width: 520px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: var(--max-width); margin: 0 auto; padding: 64px 24px 80px; }
+
+  .logo { display: block; width: 120px; height: 36px; margin-bottom: 48px; opacity: 0.85; }
+
+  .module { margin-bottom: 56px; }
+  .module-num {
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--warm); margin-bottom: 12px; font-weight: 500;
+  }
+  .module h2 {
+    font-family: var(--font-serif); font-size: 22px; font-weight: 400;
+    margin-bottom: 14px; color: var(--text);
+  }
+  .module p { font-size: 15px; color: var(--text-subtle); margin-bottom: 10px; }
+  .module p:last-child { margin-bottom: 0; }
+
+  .sep { height: 1px; background: rgba(0,0,0,0.06); margin: 48px 0 56px; }
+
+  .back-link { display: inline-block; margin-top: 16px; font-size: 14px; color: var(--text-subtle); text-decoration: none; transition: color 0.2s; }
+  .back-link:hover { color: var(--warm); }
+
+  .lang-switch { position: fixed; top: 24px; right: 24px; z-index: 100; }
+  .lang-switch a { font-size: 13px; color: var(--text-subtle); text-decoration: none; padding: 6px 14px; border-radius: 20px; background: rgba(255,255,255,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); }
+  .lang-switch a:hover { color: var(--warm); border-color: var(--warm); }
+  .zh, .en { display: none; }
+  .zh.active, .en.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="lang-switch">
+  <a href="#" id="lang-toggle" onclick="toggleLang();return false;">English</a>
+</div>
+
+<div class="page">
+
+<svg class="logo" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <path d="M 12 38 Q 32 18, 44 32 T 72 32 T 100 32 T 128 32 T 156 32 T 188 38"
+        fill="none" stroke="#2a2a2a" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M 14 38 Q 34 20, 46 34 T 72 34 T 100 34 T 128 34 T 154 34 T 186 38"
+        fill="none" stroke="#2a2a2a" stroke-width="0.5" opacity="0.25" stroke-linecap="round"/>
+  <text x="34" y="54" font-family="Georgia,serif" font-size="28" font-style="italic"
+        fill="#2a2a2a" text-anchor="middle">f</text>
+  <text x="68" y="46" font-family="Georgia,serif" font-size="28" font-style="italic"
+        fill="#2a2a2a" text-anchor="middle">a</text>
+  <text x="100" y="54" font-family="Georgia,serif" font-size="28" font-style="italic"
+        fill="#2a2a2a" text-anchor="middle">t</text>
+  <text x="132" y="50" font-family="Georgia,serif" font-size="28" font-style="italic"
+        fill="#2a2a2a" text-anchor="middle">a</text>
+  <circle cx="100" cy="32" r="2.2" fill="#c47a4a"/>
+  <circle cx="12" cy="38" r="1.2" fill="#2a2a2a"/>
+  <circle cx="188" cy="38" r="1.2" fill="#2a2a2a"/>
+</svg>
+
+<!-- ===== Chinese ===== -->
+<div class="zh active" id="zh-content">
+
+<div class="module">
+  <div class="module-num">01</div>
+  <h2>这是什么</h2>
+  <p>一个用 AI 帮你找到陌生人的地方。</p>
+  <p>你写一段话。AI 理解你的文字，找到适合跟你对话的人。</p>
+  <p>然后——你们在各自的邮箱里通信。</p>
+  <p>简单。私密。</p>
+</div>
+
+<div class="sep"></div>
+
+<div class="module">
+  <div class="module-num">02</div>
+  <h2>AI 怎么匹配</h2>
+  <p>把你心里想的写下来——</p>
+  <p>你想找什么样的人，想聊什么样的话题。</p>
+  <p>AI 读懂你的文字，在等待的人里，帮你找到适合对话的那一个。</p>
+</div>
+
+<div class="sep"></div>
+
+<div class="module">
+  <div class="module-num">03</div>
+  <h2>怎么开始</h2>
+  <p>① 打开 fata.uk，写下你想说的话</p>
+  <p>② 留下你的邮箱（加密存储）</p>
+  <p>③ AI 找到匹配的人，双方互收到对方的邮箱</p>
+  <p>④ 打开你的邮箱，给对方写第一封信</p>
+  <br>
+  <p>没有聊天室。没有在线状态。没有已读回执。</p>
+  <p>就像写邮件——AI 只是帮你找到了该收信的那个人。</p>
+</div>
+
+<div class="sep"></div>
+
+<div class="module">
+  <div class="module-num">04</div>
+  <h2>隐私</h2>
+  <p>你们的对话，在你们各自的邮箱里。</p>
+  <p>fata 不看你写了什么。不存你们的聊天。不参与你们的沟通。</p>
+  <p>引介完成，fata 退出。</p>
+  <p>剩下的——是你和那个人的事。</p>
+</div>
+
+<a href="/" class="back-link">← 回到 fata</a>
+
+</div>
+
+<!-- ===== English ===== -->
+<div class="en" id="en-content">
+
+<div class="module">
+  <div class="module-num">01</div>
+  <h2>What is fata</h2>
+  <p>A place where AI helps you find a stranger.</p>
+  <p>You write a few lines. AI understands your words, finds someone worth talking to.</p>
+  <p>Then — you talk in your own email.</p>
+  <p>Simple. Private.</p>
+</div>
+
+<div class="sep"></div>
+
+<div class="module">
+  <div class="module-num">02</div>
+  <h2>How AI matches</h2>
+  <p>Write what's on your mind —</p>
+  <p>who you want to find, what you want to talk about.</p>
+  <p>AI understands your words, and finds someone worth the conversation.</p>
+</div>
+
+<div class="sep"></div>
+
+<div class="module">
+  <div class="module-num">03</div>
+  <h2>How it works</h2>
+  <p>① Open fata.uk, write what's on your mind</p>
+  <p>② Leave your email (encrypted)</p>
+  <p>③ AI finds your match, you both get each other's email</p>
+  <p>④ Open your inbox and write the first message</p>
+  <br>
+  <p>No chat rooms. No online status. No read receipts.</p>
+  <p>Like emailing — AI just helped you find the right person.</p>
+</div>
+
+<div class="sep"></div>
+
+<div class="module">
+  <div class="module-num">04</div>
+  <h2>Privacy</h2>
+  <p>Your conversations live in your own inbox.</p>
+  <p>fata doesn't read your messages. Doesn't store your chats. Doesn't participate.</p>
+  <p>After the introduction, fata steps out.</p>
+  <p>Everything after — is between you and them.</p>
+</div>
+
+<a href="/" class="back-link">← Back to fata</a>
+
+</div>
+
+</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const langParam = params.get('lang');
+  let currentLang = 'zh';
+  if (langParam === 'en') currentLang = 'en';
+
+  function showLang(lang) {
+    currentLang = lang;
+    document.getElementById('zh-content').classList.toggle('active', lang === 'zh');
+    document.getElementById('en-content').classList.toggle('active', lang === 'en');
+    document.getElementById('lang-toggle').textContent = lang === 'zh' ? 'English' : '中文';
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+    try { history.replaceState(null, '', '?lang=' + lang); } catch(_) {}
+  }
+
+  function toggleLang() {
+    showLang(currentLang === 'zh' ? 'en' : 'zh');
+  }
+
+  showLang(currentLang);
+</script>
+
+</body>
+</html>

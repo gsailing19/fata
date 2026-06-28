@@ -6,7 +6,7 @@ rm -rf dist
 mkdir -p dist/modules dist/logo
 
 # HTML
-cp index.html privacy.html privacy-en.html dist/
+cp index.html about.html privacy.html privacy-en.html dist/
 
 # JS modules (all 6 are public-facing browser code)
 cp modules/*.js dist/modules/

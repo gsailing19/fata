@@ -9,7 +9,20 @@ const crypto = require('crypto');
 const https = require('https');
 
 // ===== 配置 =====
-const WORKER = 'https://worker.fata.uk';
+
+// Worker 地址从 wrangler.toml 路由配置自动解析
+function resolveWorkerURL() {
+  try {
+    const toml = require('fs').readFileSync(require('path').join(__dirname, '..', 'config', 'wrangler.toml'), 'utf8');
+    const match = toml.match(/pattern\s*=\s*"([^"]+)"/);
+    if (match) {
+      const hostname = match[1].split('/')[0];
+      return `https://${hostname}`;
+    }
+  } catch (_) { /* fall through */ }
+  return process.env.FATA_WORKER_URL || 'https://fata.uk';
+}
+const WORKER = resolveWorkerURL();
 const HMAC_KEY = process.env.FATA_HMAC_KEY || '';
 
 // Resend 测试邮件（deliverable@resend.dev 是 Resend 的测试地址，不会真的发出去但会在 Dashboard 显示）

@@ -219,6 +219,13 @@ body {
 .btn-deliver:active { transform: scale(0.97); }
 .btn-deliver:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
 
+.about-link {
+  display: inline-block; margin-top: 14px; font-size: 13px;
+  color: var(--text-whisper); text-decoration: none;
+  transition: color 0.2s;
+}
+.about-link:hover { color: var(--warm); }
+
 /* 通用按钮微交互 */
 .btn-primary {
   font-family: var(--font-sans); font-size: 15px; font-weight: 500;
@@ -697,6 +704,7 @@ window.addEventListener('unhandledrejection', function(e) {
       'landing.fastMatchDesc': '纯本地计算，秒级匹配，无需等待',
       'landing.deliver': '投递',
       'landing.interviewLink': '不知道写什么？让 AI 帮你整理',
+      'landing.aboutLink': 'fata 是什么？',
 
       'loading.preparing': '正在准备文字引擎...',
 
@@ -861,6 +869,7 @@ window.addEventListener('unhandledrejection', function(e) {
       'landing.fastMatchDesc': 'Fully local, instant matching, no waiting needed',
       'landing.deliver': 'Send',
       'landing.interviewLink': 'Not sure what to write? Let AI help',
+      'landing.aboutLink': 'What is fata?',
 
       'loading.preparing': 'Preparing the word engine...',
 
@@ -1230,6 +1239,8 @@ window.addEventListener('unhandledrejection', function(e) {
         <button class="btn-deliver" id="btn-deliver">${t('landing.deliver')}</button>
 
         <div style="width:200px;height:1px;background:linear-gradient(to right,transparent,rgba(196,122,74,0.25),transparent);margin:18px auto 0;"></div>
+
+        <a href="/about.html?lang=${currentLang}" class="about-link">${t('landing.aboutLink')}</a>
       </div>
     `;
 
