@@ -220,11 +220,14 @@ body {
 .btn-deliver:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
 
 .about-link {
-  display: inline-block; margin-top: 14px; font-size: 13px;
-  color: var(--text-whisper); text-decoration: none;
-  transition: color 0.2s;
+  display: inline-block; margin-top: 18px; font-size: 15px;
+  color: var(--warm); text-decoration: none;
+  transition: opacity 0.2s; font-family: var(--font-sans);
 }
-.about-link:hover { color: var(--warm); }
+.about-link::after {
+  content: ' →'; font-size: 13px; opacity: 0.6;
+}
+.about-link:hover { opacity: 0.7; }
 
 /* 通用按钮微交互 */
 .btn-primary {
