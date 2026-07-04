@@ -761,6 +761,7 @@ window.addEventListener('unhandledrejection', function(e) {
       'email.verifyLink': '审查源码验证这条承诺。',
       'email.placeholder': 'example@qq.com',
       'email.cancel': '以后再说',
+      'email.reminder': 'fata 需要用邮箱通知你匹配结果，暂时不想填的话可以先逛逛，文字给你留着。',
       'email.confirm': '确认',
       'email.tip': '推荐用 QQ 邮箱或 Outlook，无需任何配置',
 
@@ -808,6 +809,10 @@ window.addEventListener('unhandledrejection', function(e) {
       'error.transientDesc': '服务器一瞬间太忙了，点重试就好，你的文字已经保存不会丢。',
       'error.rateLimited': '稍等一下',
       'error.rateLimitedDesc': '刚刚提交太快了，请等 {n} 秒后再试。',
+      'error.emailRateLimited': '邮箱使用次数已达上限',
+      'error.emailRateLimitedDesc': '这个邮箱今天用太多次了。换一个邮箱或者明天再来试试吧。',
+      'error.signalTooLow': '文字有点短',
+      'error.signalTooLowDesc': '多写一些具体的事情或感受吧。文字越真诚，越容易遇到对的人。',
       'error.timeout': '网络有点慢',
       'error.timeoutDesc': '请求超时了，你的文字已保存，等会儿重试就好。',
       'error.retry': '重试',
@@ -926,6 +931,7 @@ window.addEventListener('unhandledrejection', function(e) {
       'email.verifyLink': 'Audit the source code to verify this promise.',
       'email.placeholder': 'example@gmail.com',
       'email.cancel': 'Later',
+      'email.reminder': 'fata needs your email to let you know when someone matches. Your words are saved — come back anytime.',
       'email.confirm': 'Confirm',
       'email.tip': 'Gmail or Outlook recommended — no setup needed',
 
@@ -973,6 +979,10 @@ window.addEventListener('unhandledrejection', function(e) {
       'error.transientDesc': 'The server is momentarily overloaded. Tap retry — your text is saved.',
       'error.rateLimited': 'Hold on a moment',
       'error.rateLimitedDesc': 'You submitted too quickly. Please wait {n} seconds before trying again.',
+      'error.emailRateLimited': 'Email limit reached',
+      'error.emailRateLimitedDesc': 'This email has been used too many times today. Try another email or come back tomorrow.',
+      'error.signalTooLow': 'A bit too short',
+      'error.signalTooLowDesc': 'Share more details or feelings — the more honest you are, the better the match.',
       'error.timeout': 'Network is slow',
       'error.timeoutDesc': 'Request timed out. Your text is saved — try again shortly.',
       'error.retry': 'Retry',
@@ -1025,6 +1035,22 @@ window.addEventListener('unhandledrejection', function(e) {
   currentLang = currentLang || (navigator.language.startsWith('en') ? 'en' : 'zh');
   if (!['zh','en'].includes(currentLang)) currentLang = 'zh';
   window.currentLang = currentLang;
+
+  // Test mode: ?test=1 URL parameter marks submissions as test (not real user)
+  const urlParams = new URLSearchParams(window.location.search);
+  window._fataTestMode = urlParams.get('test') === '1';
+
+  // Funnel beacon: fire-and-forget analytics ping
+  let _beaconSent = {};
+  function sendBeaconEvent(evt, extra = {}) {
+    const key = evt + (extra.lang || currentLang || '');
+    if (evt === 'start_typing' && _beaconSent[key]) return; // only once per session
+    _beaconSent[key] = true;
+    try {
+      const body = JSON.stringify({ event: evt, lang: currentLang, timestamp: Date.now(), ...extra });
+      navigator.sendBeacon(`${APIClient._activeBase || 'https://fata.uk'}/api/beacon`, body);
+    } catch (_) { /* beacon is best-effort */ }
+  }
 
   function t(key) { return I18N[currentLang]?.[key] || I18N.zh[key] || key; }
   window.t = t;
@@ -1123,6 +1149,17 @@ window.addEventListener('unhandledrejection', function(e) {
 
     // 渲染首页
     renderHome();
+
+    // Restore draft from previous session
+    setTimeout(() => restoreDraft(), 200);
+
+    // Funnel: page loaded
+    setTimeout(() => sendBeaconEvent('page_view'), 100);
+
+    // Test bridge: expose module-scoped functions when ?test=1
+    if (window._fataTestMode) {
+      window.__test = { sendBeaconEvent, restoreDraft, showEmailReminderToast };
+    }
   }
 
   function onModelProgress(pct, text) {
@@ -1325,7 +1362,10 @@ window.addEventListener('unhandledrejection', function(e) {
     });
 
     // 字数提示
-    textarea.addEventListener('input', updateLengthHint);
+    textarea.addEventListener('input', () => {
+      sendBeaconEvent('start_typing');
+      updateLengthHint();
+    });
 
     // 快捷键投递
     textarea.addEventListener('keydown', (e) => {
@@ -1360,8 +1400,8 @@ window.addEventListener('unhandledrejection', function(e) {
     const text = textarea.value.trim();
     if (!text) return;
 
-    const email = await getOrAskEmail();
-    if (!email) return;
+    // Save draft immediately (before any UI changes that might hide the textarea)
+    sessionStorage.setItem('fata_draft_text', text);
 
     console.log('fata: phase1-start', { textLen: text.length, lang: currentLang });
 
@@ -1369,7 +1409,7 @@ window.addEventListener('unhandledrejection', function(e) {
     showWaiting(t('waiting.feeling'));
     const signalResult = SignalHeuristic.computeSignalDensity(text, currentLang);
 
-    // Safety check
+    // Safety check — blocks self-harm/hate BEFORE asking for email
     const localCheck = SafetyHandler.localCheck(text);
     if (localCheck.action === 'support') {
       showSupportResources(SafetyHandler.resources);
@@ -1380,7 +1420,7 @@ window.addEventListener('unhandledrejection', function(e) {
       return;
     }
 
-    // Low signal guide
+    // Low signal guide — also before email, user might want to rewrite
     if (signalResult.score < 0.3) {
       const guideDecision = LowSignalGuide.checkNeedsGuide(text, signalResult);
       if (guideDecision.needsGuide) {
@@ -1388,6 +1428,10 @@ window.addEventListener('unhandledrejection', function(e) {
         return;
       }
     }
+
+    // Now ask for email — only after content checks pass
+    const email = await getOrAskEmail();
+    if (!email) return;
 
     console.log('fata: phase1-done', { score: signalResult.score });
 
@@ -1416,6 +1460,9 @@ window.addEventListener('unhandledrejection', function(e) {
 
       console.log('fata: submit-start');
 
+    // Funnel: user clicked send and passed all checks
+    sendBeaconEvent('click_send');
+
       // Compute TF-IDF locally as API fallback
       const tfidfEmbedding = await MatchEngine._generateEmbedding(text);
 
@@ -1427,7 +1474,8 @@ window.addEventListener('unhandledrejection', function(e) {
         text, email, emailHash,
         lang: currentLang,
         allowSnippet: state.allowSnippet,
-        tfidfEmbedding
+        tfidfEmbedding,
+        ...(window._fataTestMode ? { _test: true } : {})
       });
 
       // Clear draft on success
@@ -1436,23 +1484,23 @@ window.addEventListener('unhandledrejection', function(e) {
 
       state.lastMatchAttempt = { text, email };
 
+      sendBeaconEvent('submit_success');
       if (result.matched) {
+        sendBeaconEvent('match_success');
         const resonance = result.resonance || { resonance: t('match.resonanceFallback'), questions: [t('match.icebreaker1'), t('match.icebreaker2'), t('match.icebreaker3')] };
         showMatchSuccess(result, resonance, text);
       } else {
+        sendBeaconEvent('match_no_match');
         showNoMatch(result);
       }
     } catch (e) {
-      console.error('fata: submit failed', {
-        name: e.name,
-        message: e.message,
-        cause: e.cause?.message || e.cause,
-        stack: e.stack?.slice(0, 400)
-      });
-      const errStr = (e.message || '') + (e.cause ? ' ' + e.cause : '');
+      const errStr = (e.message || '') + (e.cause ? ' ' + (e.cause.message || e.cause) : '');
+      sendBeaconEvent('submit_fail', { reason: errStr.slice(0, 80) });
       const isRateLimited = errStr.includes('rate_limited') || errStr.includes('429');
-      const isTimeout = errStr.includes('timeout') || errStr.includes('AbortError');
-      const isRetryable = !isRateLimited && (
+      const isEmailLimited = errStr.includes('email_rate_limited');
+      const isSignalLow = errStr.includes('signal_too_low');
+      const isTimeout = errStr.includes('timeout') || errStr.includes('AbortError') || errStr.includes('pow_timeout');
+      const isRetryable = !isRateLimited && !isEmailLimited && !isSignalLow && (
         isTimeout ||
         errStr.includes('Failed to fetch') ||
         errStr.includes('Load failed') ||
@@ -1461,53 +1509,29 @@ window.addEventListener('unhandledrejection', function(e) {
         errStr.includes('502') ||
         errStr.includes('503')
       );
+      let errMsg;
+      if (isSignalLow) {
+        errMsg = t('error.signalTooLow');
+      } else if (isEmailLimited) {
+        errMsg = t('error.emailRateLimited');
+      } else if (isRateLimited) {
+        errMsg = t('error.rateLimited');
+      } else if (isRetryable) {
+        errMsg = t('submit.retryable');
+      } else {
+        errMsg = t('error.network');
+      }
       showMatchError({
-        message: isRateLimited ? t('error.rateLimited') : (isRetryable ? t('submit.retryable') : t('error.network')),
+        message: errMsg,
         retryable: isRetryable || isRateLimited,
-        cooldownSeconds: isRateLimited ? 60 : 0,
-        rateLimited: isRateLimited,
+        cooldownSeconds: isRateLimited || isEmailLimited ? 60 : 0,
+        rateLimited: isRateLimited || isEmailLimited,
         timeout: isTimeout && !isRateLimited
       });
     }
   }
 
   // ===== 匹配流程 =====
-
-  // 将用户文字创建为 pending GitHub Issue（入匹配池）
-  async function createPendingIssue(text, email, intentProfile) {
-    const embedding = await MatchEngine._generateEmbedding(text);
-    const embEncrypted = await encryptData(embedding);
-    const emailEncrypted = await encryptEmail(email);
-    const emailHash = await sha256(email);
-    const snippet = text.length > 300 ? text.slice(0, 300) : text;
-
-    const body = JSON.stringify({
-      l: currentLang,
-      e: embEncrypted,
-      m: emailEncrypted,
-      h: emailHash,
-      et: MatchEngine.embeddingType || 'tfidf',
-      text_snippet: snippet,
-      allow_snippet: state.allowSnippet,
-      ...(intentProfile ? { i: await encryptData(intentProfile) } : {})
-    });
-
-    const endpoint = '/api/github/issues';
-    const hmacHeaders = _buildTokenHeaders();
-    const resp = await fetch(API_BASE + endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...hmacHeaders },
-      body: JSON.stringify({ title: snippet.slice(0, 30), body, labels: ['pending'] })
-    });
-
-    if (!resp.ok) {
-      const errText = await resp.text();
-      throw new Error('createPendingIssue failed: ' + resp.status + ' ' + errText);
-    }
-
-    const issue = await resp.json();
-    return { issueNumber: issue.number, embedding, _match: issue._match || null };
-  }
 
   // v3: Simplified match — Worker handles everything via /api/submit
   async function executeMatch(text, email) {
@@ -2096,6 +2120,8 @@ window.addEventListener('unhandledrejection', function(e) {
       });
 
       cancel.addEventListener('click', () => {
+        // Draft already saved in handleDeliver; just show reminder
+        showEmailReminderToast();
         done(null);
       });
 
@@ -2105,32 +2131,33 @@ window.addEventListener('unhandledrejection', function(e) {
     });
   }
 
-  async function encryptEmail(email) {
-    return encryptData(email);
+  function showEmailReminderToast() {
+    const existing = document.querySelector('.email-reminder-toast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.className = 'email-reminder-toast';
+    toast.innerHTML = `<p>${t('email.reminder')}</p>`;
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#2d2d2d;color:#e0d5c0;padding:12px 24px;border-radius:8px;font-size:15px;z-index:10000;max-width:90vw;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);animation:fadeInUp 0.4s ease;';
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.transition = 'opacity 0.5s';
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 500);
+    }, 6000);
   }
 
-  async function encryptData(data) {
-    // 使用 AES-256-GCM 加密，密钥从 DATA_ENCRYPTION_KEY 派生
+  // Restore draft from sessionStorage on page load
+  function restoreDraft() {
     try {
-      const encoder = new TextEncoder();
-      const plaintext = JSON.stringify(data);
-      const keyData = encoder.encode(DATA_ENCRYPTION_KEY).slice(0, 32); // 256-bit
-      const key = await crypto.subtle.importKey('raw', keyData,
-        { name: 'AES-GCM' }, false, ['encrypt']);
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const ciphertext = await crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv },
-        key,
-        encoder.encode(plaintext)
-      );
-      const combined = new Uint8Array(iv.length + ciphertext.byteLength);
-      combined.set(iv);
-      combined.set(new Uint8Array(ciphertext), iv.length);
-      return btoa(String.fromCharCode(...combined));
-    } catch (e) {
-      console.error('fata: encryptData failed', e);
-      throw e;
-    }
+      const draft = sessionStorage.getItem('fata_draft_text');
+      if (draft) {
+        const textarea = document.getElementById('user-text');
+        if (textarea && !textarea.value.trim()) {
+          textarea.value = draft;
+          updateLengthHint();
+        }
+      }
+    } catch (_) {}
   }
 
   async function decryptAES(encrypted, keyBytes) {

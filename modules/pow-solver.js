@@ -39,13 +39,18 @@ const PoWSolver = {
    * @param {number} difficulty - leading zero bits required
    * @returns {Promise<{nonce: string, hash: string, duration: number}>}
    */
-  async solve(challengeNonce, difficulty) {
+  async solve(challengeNonce, difficulty, timeoutMs = 15000) {
     const start = performance.now();
     const encoder = new TextEncoder();
     const challengeBytes = encoder.encode(challengeNonce);
     let nonce = 0;
 
     while (true) {
+      // Timeout guard: prevent infinite hang on slow devices
+      if (performance.now() - start > timeoutMs) {
+        throw new Error('pow_timeout');
+      }
+
       const nonceStr = nonce.toString(36);
       const input = encoder.encode(challengeNonce + nonceStr);
       const hash = await crypto.subtle.digest('SHA-256', input);

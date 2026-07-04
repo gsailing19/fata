@@ -147,7 +147,7 @@ async function createIssue(text, email, label) {
     body: JSON.stringify({
       title: `[Test] ${snippet.slice(0, 30)}`,
       body,
-      labels: [label || 'pending']
+      labels: ['test', label || 'pending']
     })
   });
 
@@ -315,7 +315,7 @@ async function main() {
         similarity: sim,
         timestamp: Date.now()
       }),
-      labels: ['matched']
+      labels: ['test', 'matched']
     })
   });
   check('Match Issue 创建成功', matchResp.status === 201 || matchResp.status === 200,
