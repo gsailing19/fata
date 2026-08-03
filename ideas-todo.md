@@ -30,8 +30,7 @@
 
 ### 退订机制完善
 
-- **现状**：Worker 的 `/unsubscribe` 端点可以写入 KV（存邮箱 hash），但发送邮件时没有检查退订列表。用户点了"暂停通知"实际无效。
-- **需要**：在 `/api/resend/send` 发送前，先检查 `UNSUBSCRIBE_KV.get(emailHash)`，如存在则跳过该收件人。
+- **状态**：已完成。`sendMatchEmail` 和 `/api/resend/send` 都会在发送前检查 `UNSUBSCRIBE_KV`。
 
 ### max_match_count 清理
 

@@ -1,19 +1,21 @@
 /**
- * fata 端到端自动化测试
+ * fata 端到端自动化测试（真实用户链路）
  *
- * 模拟两个用户在匹配池中相遇的完整链路：
- * 用户 A 投递 → 入池 → 用户 B 投递 → 匹配到 A → Issue 关闭 → Match Issue 创建 → 邮件发送
+ * 用户 A：/api/bootstrap → PoW → /api/challenge → /api/submit 入池
+ * 用户 B：走同样链路，触发 Worker 自动匹配
+ * 断言：匹配返回、双方 Issue 关闭、Match Issue 创建、双邮件通知完成
  */
 
 const crypto = require('crypto');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
 // ===== 配置 =====
 
-// Worker 地址从 wrangler.toml 路由配置自动解析
 function resolveWorkerURL() {
   try {
-    const toml = require('fs').readFileSync(require('path').join(__dirname, '..', 'config', 'wrangler.toml'), 'utf8');
+    const toml = fs.readFileSync(path.join(__dirname, '..', 'config', 'wrangler.toml'), 'utf8');
     const match = toml.match(/pattern\s*=\s*"([^"]+)"/);
     if (match) {
       const hostname = match[1].split('/')[0];
@@ -22,16 +24,20 @@ function resolveWorkerURL() {
   } catch (_) { /* fall through */ }
   return process.env.FATA_WORKER_URL || 'https://fata.uk';
 }
+
 const WORKER = resolveWorkerURL();
 const HMAC_KEY = process.env.FATA_HMAC_KEY || '';
+const RUN_ID = Date.now().toString(36);
 
-// Resend 测试邮件（deliverable@resend.dev 是 Resend 的测试地址，不会真的发出去但会在 Dashboard 显示）
+// Resend 测试地址；E2E 用不同 email hash 模拟两个不同用户
 const EMAIL_A = 'delivered@resend.dev';
 const EMAIL_B = 'delivered@resend.dev';
+const EMAIL_HASH_A = sha256(`e2e-a-${RUN_ID}@fata.test`);
+const EMAIL_HASH_B = sha256(`e2e-b-${RUN_ID}@fata.test`);
 
-// 两段情绪相似的文字（失眠/熬夜主题）
 const TEXT_A = '最近失眠越来越严重了，不是不想睡，是躺下来脑子就开始转，越想越多，白天整个人都是飘的';
 const TEXT_B = '每天晚上都很清醒，白天却很困，快分不清白天和晚上了，脑子停不下来，已经连续一周凌晨三点才睡着';
+const TEXT_W = '最近总是一个人吃饭，周末也不知道去哪里，想找个人随便聊聊最近的生活';
 
 // ===== 工具函数 =====
 
@@ -43,21 +49,10 @@ function hmacSign(message, key) {
   return crypto.createHmac('sha256', key).update(message).digest('base64');
 }
 
-function encryptAES(plaintext) {
-  const key = Buffer.from(HMAC_KEY, 'utf8').slice(0, 32); // 256-bit, 与浏览器端对齐
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
-  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  const combined = Buffer.concat([iv, encrypted, tag]);
-  return combined.toString('base64');
-}
-
 function buildHMACHeaders(endpoint) {
   const ts = String(Math.floor(Date.now() / 1000));
-  const path = new URL(endpoint, WORKER).pathname;
-  const msg = `${ts}:${path}`;
-  const sig = hmacSign(msg, HMAC_KEY);
+  const pathname = new URL(endpoint, WORKER).pathname;
+  const sig = hmacSign(`${ts}:${pathname}`, HMAC_KEY);
   return { 'X-Fata-Signature': sig, 'X-Fata-Timestamp': ts };
 }
 
@@ -66,8 +61,7 @@ function fetchJSON(url, options = {}) {
     const urlObj = new URL(url);
     const req = https.request(urlObj, {
       method: options.method || 'GET',
-      headers: options.headers || {},
-      body: options.body
+      headers: options.headers || {}
     }, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
@@ -85,9 +79,139 @@ function fetchJSON(url, options = {}) {
   });
 }
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function isOK(res) {
+  return res.status >= 200 && res.status < 300;
+}
 
-// ===== 模拟浏览器端 embedding 生成（TF-IDF 字符 bigram，与 match-engine.js 一致）=====
+const cookieJar = {};
+
+function captureCookies(res) {
+  const setCookies = res.headers['set-cookie'];
+  if (!setCookies) return;
+  const list = Array.isArray(setCookies) ? setCookies : [setCookies];
+  for (const sc of list) {
+    const pair = sc.split(';')[0];
+    const eq = pair.indexOf('=');
+    if (eq > 0) cookieJar[pair.slice(0, eq)] = pair.slice(eq + 1);
+  }
+}
+
+function cookieHeader() {
+  return Object.entries(cookieJar).map(([k, v]) => `${k}=${v}`).join('; ');
+}
+
+function solvePow(challengeNonce, difficulty) {
+  const start = Date.now();
+  let nonce = 0;
+  while (true) {
+    const hash = crypto.createHash('sha256').update(challengeNonce + nonce.toString(36)).digest();
+    let zeroBits = 0;
+    for (const byte of hash) {
+      if (byte === 0) {
+        zeroBits += 8;
+      } else {
+        let b = byte;
+        while ((b & 0x80) === 0) {
+          zeroBits++;
+          b <<= 1;
+        }
+        break;
+      }
+    }
+    if (zeroBits >= difficulty) {
+      return {
+        nonce: nonce.toString(36),
+        hash: hash.toString('hex'),
+        durationMs: Date.now() - start
+      };
+    }
+    nonce++;
+  }
+}
+
+async function startSession() {
+  const boot = await fetchJSON(`${WORKER}/api/bootstrap`, { method: 'POST' });
+  if (!isOK(boot)) throw new Error(`bootstrap failed: ${boot.status}`);
+  captureCookies(boot);
+
+  const { challengeNonce, difficulty } = boot.data;
+  const solution = solvePow(challengeNonce, difficulty);
+
+  const chal = await fetchJSON(`${WORKER}/api/challenge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookieHeader() },
+    body: JSON.stringify({ nonce: solution.nonce, challengeNonce })
+  });
+  if (!isOK(chal)) {
+    throw new Error(`challenge failed: ${chal.status} ${JSON.stringify(chal.data)}`);
+  }
+  return { token: chal.data.submitToken, expiresAt: chal.data.expiresAt };
+}
+
+async function submitText(token, text, email, emailHash) {
+  const tfidfEmbedding = charBigramVector(text);
+  const resp = await fetchJSON(`${WORKER}/api/submit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Fata-Submit-Token': token,
+      Cookie: cookieHeader()
+    },
+    body: JSON.stringify({
+      text,
+      email,
+      emailHash,
+      lang: 'zh',
+      allowSnippet: true,
+      tfidfEmbedding,
+      _test: true
+    })
+  });
+  if (!isOK(resp)) {
+    throw new Error(`submit failed: ${resp.status} ${JSON.stringify(resp.data)}`);
+  }
+  return resp.data;
+}
+
+async function getJSON(endpoint, token) {
+  const headers = {};
+  if (token) headers['X-Fata-Submit-Token'] = token;
+  if (Object.keys(cookieJar).length) headers.Cookie = cookieHeader();
+  const resp = await fetchJSON(`${WORKER}${endpoint}`, { method: 'GET', headers });
+  if (!isOK(resp)) throw new Error(`GET ${endpoint} failed: ${resp.status} ${JSON.stringify(resp.data)}`);
+  return resp.data;
+}
+
+async function getIssue(number, token) {
+  return getJSON(`/api/github/issues/${number}`, token);
+}
+
+function hasLabel(issue, name) {
+  return (issue.labels || []).some(l => typeof l === 'string' ? l === name : (l.name === name));
+}
+
+async function cleanupIssue(number) {
+  if (!HMAC_KEY) {
+    console.log(`  ⚠ FATA_HMAC_KEY 未设置，跳过 Match Issue #${number} 清理`);
+    return false;
+  }
+  const endpoint = `/api/github/issues/${number}`;
+  const resp = await fetchJSON(`${WORKER}${endpoint}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...buildHMACHeaders(endpoint) },
+    body: JSON.stringify({ state: 'closed' })
+  });
+  if (resp.status === 200) {
+    console.log(`  ✓ Match Issue #${number} 已关闭`);
+    return true;
+  }
+  console.log(`  ⚠ Match Issue #${number} 关闭失败: ${resp.status}`);
+  return false;
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
 function charBigramVector(text) {
   const chars = (text || '').replace(/\s+/g, '').split('');
@@ -108,84 +232,11 @@ function charBigramVector(text) {
   return vec;
 }
 
-function cosineSimilarity(a, b) {
-  let dot = 0, normA = 0, normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-// ===== 创建 pending issue =====
-
-async function createIssue(text, email, label) {
-  const embedding = charBigramVector(text);
-  const embEncrypted = encryptAES(JSON.stringify(embedding));
-  const emailEncrypted = encryptAES(email);
-  const emailHash = sha256(email);
-  const snippet = text.length > 80 ? text.slice(0, 80) : text;
-
-  const body = JSON.stringify({
-    l: 'zh',
-    e: embEncrypted,
-    m: emailEncrypted,
-    h: emailHash,
-    text_snippet: snippet
-  });
-
-  const endpoint = '/api/github/issues';
-  const headers = {
-    'Content-Type': 'application/json',
-    ...buildHMACHeaders(endpoint)
-  };
-
-  const resp = await fetchJSON(`${WORKER}${endpoint}`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      title: `[Test] ${snippet.slice(0, 30)}`,
-      body,
-      labels: ['test', label || 'pending']
-    })
-  });
-
-  if (resp.status !== 201 && resp.status !== 200) {
-    console.error(`  ✗ 创建 Issue 失败: ${resp.status}`, typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data));
-    return null;
-  }
-
-  console.log(`  ✓ Issue #${resp.data.number} 创建成功: "${snippet.slice(0, 30)}..."`);
-  return { number: resp.data.number, embedding };
-}
-
-// ===== 关闭 issue =====
-
-async function closeIssue(issueNumber) {
-  const endpoint = `/api/github/issues/${issueNumber}`;
-  const headers = {
-    'Content-Type': 'application/json',
-    ...buildHMACHeaders(endpoint)
-  };
-  const resp = await fetchJSON(`${WORKER}${endpoint}`, {
-    method: 'PATCH',
-    headers,
-    body: JSON.stringify({ state: 'closed' })
-  });
-  if (resp.status === 200) {
-    console.log(`  ✓ Issue #${issueNumber} 已关闭`);
-    return true;
-  }
-  console.log(`  ⚠ Issue #${issueNumber} 关闭失败: ${resp.status}`);
-  return false;
-}
-
 // ===== 主测试流程 =====
 
 async function main() {
   console.log('═══════════════════════════════════════════');
-  console.log('  fata 端到端测试 - 双用户匹配链路');
+  console.log('  fata E2E - 真实 /api/submit 匹配链路');
   console.log('═══════════════════════════════════════════\n');
 
   let passed = 0;
@@ -204,182 +255,97 @@ async function main() {
     }
   }
 
-  // ==========================================
-  // Phase 1: 用户 A 投递
-  // ==========================================
-  console.log('── Phase 1: 用户 A 投递 ──');
-  console.log(`  文字: "${TEXT_A.slice(0, 40)}..."`);
-  console.log(`  邮箱: ${EMAIL_A}`);
+  console.log('── 用户 A：PoW + 提交 ──');
+  const sessionA = await startSession();
+  console.log('  ✓ PoW 挑战通过，已获取 submit token');
 
-  const issueA = await createIssue(TEXT_A, EMAIL_A, 'pending');
-  check('用户 A 的 Issue 已创建', issueA !== null, issueA ? `#${issueA.number}` : 'failed');
+  const resultA = await submitText(sessionA.token, TEXT_A, EMAIL_A, EMAIL_HASH_A);
+  check('A 已入池且未匹配', resultA.pooled === true && resultA.matched === false, `Issue #${resultA.issueNumber}`);
 
-  if (!issueA) {
-    console.log('\n❌ Phase 1 失败，终止测试');
-    process.exit(1);
+  let pendingNumbers = [];
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (attempt > 0) await sleep(2000);
+    const pendingBefore = await getJSON('/api/github/issues?labels=pending&per_page=50', sessionA.token);
+    pendingNumbers = (Array.isArray(pendingBefore) ? pendingBefore : []).map(i => i.number);
+    if (pendingNumbers.includes(resultA.issueNumber)) break;
   }
+  check('A 的 Issue 在 pending 池中', pendingNumbers.includes(resultA.issueNumber), `#${resultA.issueNumber}`);
 
-  await sleep(4000); // 等 GitHub API 索引完成
+  console.log('\n── 用户 B：PoW + 提交 + 自动匹配 ──');
+  const sessionB = await startSession();
+  console.log('  ✓ PoW 挑战通过，已获取 submit token');
 
-  // ==========================================
-  // Phase 2: 用户 B 投递 + 匹配
-  // ==========================================
-  console.log('\n── Phase 2: 用户 B 投递 + 匹配 ──');
-  console.log(`  文字: "${TEXT_B.slice(0, 40)}..."`);
-  console.log(`  邮箱: ${EMAIL_B}`);
+  const resultB = await submitText(sessionB.token, TEXT_B, EMAIL_B, EMAIL_HASH_B);
+  console.log(`  embedSource=${resultB.embedSource} debug=${JSON.stringify(resultB.matchDebug || null)}`);
+  check('B 触发匹配成功', resultB.matched === true, `score=${resultB.matchInfo ? resultB.matchInfo.score : 'none'}`);
+  check('匹配对象是用户 A', resultB.matchInfo && resultB.matchInfo.otherEmail === EMAIL_A, resultB.matchInfo ? resultB.matchInfo.otherEmail : 'none');
+  check('双方通知已完成', resultB.notification && resultB.notification.status === 'completed' && resultB.notification.sent === true, JSON.stringify(resultB.notification));
 
-  // 用户 B 也创建 issue（入池）
-  const issueB = await createIssue(TEXT_B, EMAIL_B, 'pending');
-  check('用户 B 的 Issue 已创建', issueB !== null, issueB ? `#${issueB.number}` : 'failed');
+  await sleep(4000);
 
-  if (!issueB) {
-    console.log('\n❌ Phase 2 失败，终止测试');
-    process.exit(1);
-  }
+  console.log('\n── 匹配收尾断言 ──');
+  const issueAState = await getIssue(resultA.issueNumber, sessionB.token);
+  const issueBState = await getIssue(resultB.issueNumber, sessionB.token);
+  check('A 的 Issue 已关闭', issueAState.state === 'closed', `state=${issueAState.state}`);
+  check('B 的 Issue 已关闭', issueBState.state === 'closed', `state=${issueBState.state}`);
+  check('A 的 Issue 标记 matched', hasLabel(issueAState, 'matched'), '');
+  check('B 的 Issue 标记 matched', hasLabel(issueBState, 'matched'), '');
 
-  // 用户 B 的 embedding 与用户 A 的 embedding 做相似度计算
-  const sim = cosineSimilarity(issueB.embedding, issueA.embedding);
-  console.log(`  余弦相似度: ${(sim * 100).toFixed(1)}%`);
-  check('两段文字的余弦相似度 >= 15%（TF-IDF 阈值）', sim >= 0.15, `${(sim * 100).toFixed(1)}%`);
-
-  // 拉取 pending issues，验证能匹配到 A（而不是自己）
-  // GitHub API 有索引延迟，用重试确保获取到最新列表
-  await sleep(3000);
-  let pendingResp, pendingIssues, userAIssue, userBIssue;
-  for (let retry = 0; retry < 5; retry++) {
-    if (retry > 0) await sleep(2000);
-    pendingResp = await fetchJSON(`${WORKER}/api/github/issues?labels=pending&per_page=50`, {
-      headers: buildHMACHeaders('/api/github/issues')
-    });
-    pendingIssues = Array.isArray(pendingResp.data) ? pendingResp.data : [];
-    userAIssue = pendingIssues.find(i => i.number === issueA.number);
-    userBIssue = pendingIssues.find(i => i.number === issueB.number);
-    if (userBIssue) break; // B 的 Issue 已在 pending 列表中
-  }
-  check('用户 A 的 Issue 在 pending 池中', !!userAIssue);
-  check('用户 B 的 Issue 在 pending 池中', !!userBIssue);
-
-  // 找到最佳匹配（排除 #B 自己）
-  let bestScore = -1, bestIssue = null;
-  const bEmb = issueB.embedding;
-  for (const issue of pendingIssues) {
-    if (issue.number === issueB.number) continue; // 排除自己
-    const labels = Array.isArray(issue.labels)
-      ? (typeof issue.labels[0] === 'string' ? issue.labels : issue.labels.map(l => l.name))
-      : [];
-    if (labels.includes('seed')) continue; // 排除种子（测试只关注真实用户匹配）
-
-    let otherEmb;
-    try {
-      // 尝试从 body 中提取 text_snippet 做 char bigram
-      const body = typeof issue.body === 'string' ? JSON.parse(issue.body) : issue.body;
-      if (body.text_snippet) {
-        otherEmb = charBigramVector(body.text_snippet);
+  let matchRecord = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) await sleep(2000);
+    const matchedIssues = await getJSON('/api/github/issues?labels=matched&per_page=50', sessionB.token);
+    matchRecord = (Array.isArray(matchedIssues) ? matchedIssues : []).find(i => {
+      try {
+        const body = JSON.parse(i.body || '{}');
+        const a = resultA.issueNumber;
+        const b = resultB.issueNumber;
+        return (body.user_issue === a && body.matched_issue === b) ||
+               (body.user_issue === b && body.matched_issue === a);
+      } catch (e) {
+        return false;
       }
-    } catch (e) { continue; }
-
-    if (!otherEmb) continue;
-    const score = cosineSimilarity(bEmb, otherEmb);
-    if (score > bestScore) { bestScore = score; bestIssue = issue; }
+    });
+    if (matchRecord) break;
   }
+  check('Match Issue 已创建', !!matchRecord, matchRecord ? `#${matchRecord.number}` : 'none');
 
-  console.log(`  最佳匹配: ${bestIssue ? `#${bestIssue.number} (${(bestScore*100).toFixed(1)}%)` : '无'}`);
-  const matchedCorrectly = bestIssue && bestIssue.number === issueA.number;
-  check('用户 B 最佳匹配是用户 A（而非种子或其他用户）', matchedCorrectly,
-    bestIssue ? `匹配到 #${bestIssue.number} (${(bestScore*100).toFixed(1)}%)` : '无匹配');
+  console.log('\n── 撤回路径：用户 W 提交后撤回 ──');
+  const sessionW = await startSession();
+  const resultW = await submitText(sessionW.token, TEXT_W, EMAIL_A, sha256(`e2e-w-${RUN_ID}@fata.test`));
+  check('W 已入池', resultW.pooled === true, `Issue #${resultW.issueNumber}`);
 
-  // ==========================================
-  // Phase 3: 匹配后处理（关闭 Issues + 创建 Match Issue）
-  // ==========================================
-  console.log('\n── Phase 3: 匹配后处理 ──');
-
-  await closeIssue(issueA.number);
-  await closeIssue(issueB.number);
-
-  // 创建 Match Issue
-  const matchEndpoint = '/api/github/issues';
-  const matchHeaders = {
-    'Content-Type': 'application/json',
-    ...buildHMACHeaders(matchEndpoint)
-  };
-  const matchResp = await fetchJSON(`${WORKER}${matchEndpoint}`, {
-    method: 'POST',
-    headers: matchHeaders,
-    body: JSON.stringify({
-      title: `[Test Match] ${TEXT_A.slice(0, 20)} ↔ ${TEXT_B.slice(0, 20)}`,
-      body: JSON.stringify({
-        user_issue: issueA.number,
-        matched_issue: issueB.number,
-        user_snippet: TEXT_A.slice(0, 80),
-        matched_snippet: TEXT_B.slice(0, 80),
-        similarity: sim,
-        timestamp: Date.now()
-      }),
-      labels: ['test', 'matched']
-    })
-  });
-  check('Match Issue 创建成功', matchResp.status === 201 || matchResp.status === 200,
-    `#${matchResp.data?.number || '?'}`);
-
-  // ==========================================
-  // Phase 4: 邮件验证
-  // ==========================================
-  console.log('\n── Phase 4: 邮件发送验证 ──');
-
-  const resendResp = await fetchJSON(`${WORKER}/api/resend/send`, {
+  const withdrawResp = await fetchJSON(`${WORKER}/api/withdraw`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...buildHMACHeaders('/api/resend/send')
+      'X-Fata-Submit-Token': sessionW.token,
+      Cookie: cookieHeader()
     },
-    body: JSON.stringify({
-      to: [EMAIL_A, EMAIL_B],
-      subject: '有人在文字频率上与你共振 — fata',
-      html: `<html><body>
-        <p>测试邮件 — fata E2E 自动化测试</p>
-        <p>用户 A (${EMAIL_A}): "${TEXT_A.slice(0, 40)}..."</p>
-        <p>用户 B (${EMAIL_B}): "${TEXT_B.slice(0, 40)}..."</p>
-        <p>余弦相似度: ${(sim * 100).toFixed(1)}%</p>
-        <p>Match Issue: #${matchResp.data?.number || '?'}</p>
-      </body></html>`,
-      matchIssueNumber: matchResp.data?.number || matchResp.number,
-      userIssueNumber: issueA.number
-    })
+    body: JSON.stringify({ issueNumber: resultW.issueNumber })
   });
+  check('W 撤回请求成功', isOK(withdrawResp) && withdrawResp.data.success === true, JSON.stringify(withdrawResp.data));
 
-  if (resendResp.status === 200 || resendResp.status === 202) {
-    console.log('  ✓ Resend 邮件发送请求成功');
-    console.log(`  ✓ Resend ID: ${resendResp.data?.id || 'N/A'}`);
-    check('Resend 邮件已发送', true, `ID: ${resendResp.data?.id || 'N/A'}`);
-  } else {
-    console.log(`  ⚠ Resend 返回 ${resendResp.status}: ${JSON.stringify(resendResp.data).slice(0, 200)}`);
-    check('Resend 邮件已发送', false, `Status: ${resendResp.status}`);
-  }
+  await sleep(3000);
+  const issueWState = await getIssue(resultW.issueNumber, sessionW.token);
+  check('W 的 Issue 已关闭', issueWState.state === 'closed', `state=${issueWState.state}`);
+  check('W 的 Issue 标记 withdrawn', hasLabel(issueWState, 'withdrawn'), '');
 
-  // ==========================================
-  // 测试报告
-  // ==========================================
+  if (matchRecord) await cleanupIssue(matchRecord.number);
+
   console.log('\n═══════════════════════════════════════════');
   console.log('  测试报告');
   console.log('═══════════════════════════════════════════');
   console.log(`  通过: ${passed}  |  失败: ${failed}  |  总计: ${passed + failed}`);
   console.log('');
-
   for (const r of results) {
     const icon = r.status === 'PASS' ? '✓' : '✗';
     console.log(`  ${icon} ${r.name}${r.detail ? ` (${r.detail})` : ''}`);
   }
-
-  console.log(`\n  GitHub Issues: https://github.com/gsailing19/fata/issues`);
-  console.log(`  Resend Dashboard: https://resend.com/emails`);
+  console.log(`\n  Worker: ${WORKER}`);
+  console.log('  GitHub Issues: https://github.com/gsailing19/fata/issues');
+  console.log('  Resend Dashboard: https://resend.com/emails');
   console.log('');
-
-  // 清理：关闭测试 issues（可选，默认保留便于手动检查）
-  console.log('── 清理建议 ──');
-  console.log(`  测试 Issue A: #${issueA.number} (已关闭)`);
-  console.log(`  测试 Issue B: #${issueB.number} (已关闭)`);
-  console.log(`  Match Issue: #${matchResp.data?.number || '?'}`);
-  console.log('  可在 GitHub 上手动删除这些测试 Issue\n');
 
   process.exit(failed > 0 ? 1 : 0);
 }
