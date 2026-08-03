@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>fata — write, get matched by emotional frequency, talk in email</title>
+<title>fata — 2 a.m. words meet another awake person</title>
 
 <!-- favicon -->
 <link rel="icon" type="image/svg+xml" href="/logo/logo.svg">
 <link rel="apple-touch-icon" href="/logo/logo-unified-v2.png">
 
-<meta name="description" content="Open fata.uk, write a few lines. AI reads your emotional frequency in your browser, finds a stranger who resonates. No app. No signup. No server. Communication happens in your own email.">
+<meta name="description" content="Write what keeps you awake. fata matches your words with another awake person, then you write to each other by email. No app. No photos. No chat.">
 
 <!-- OG tags for social sharing -->
-<meta property="og:title" content="fata — write, get matched by emotional frequency">
-<meta property="og:description" content="Write a few lines. AI reads your emotional frequency. Find a stranger who resonates. No app. No signup. No server. Talk in your own email.">
+<meta property="og:title" content="fata — 2 a.m. words meet another awake person">
+<meta property="og:description" content="Write what keeps you awake. Find another awake person whose words resonate. No photos. No swiping. Communication happens in your own email.">
 <meta property="og:url" content="https://fata.uk">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://fata.uk/logo/logo-unified-v2.png">
@@ -103,6 +103,10 @@ body {
   margin: 0 auto 28px; opacity: 0.45;
 }
 .landing-wave-line svg { display: block; }
+.landing-nightline {
+  font-size: 14px; color: var(--warm); margin: 0 0 20px;
+  opacity: 0.85; line-height: 1.6; max-width: 420px; text-wrap: balance;
+}
 .landing-editor {
   width: 100%; max-width: 480px; margin-bottom: 20px;
 }
@@ -683,22 +687,22 @@ window.addEventListener('unhandledrejection', function(e) {
   import { APIClient } from './modules/api-client.js?v=6';
   import { SafetyHandler } from './modules/safety-handler.js?v=4';
   import { LowSignalGuide } from './modules/low-signal-guide.js?v=4';
-  import { ResendRetry } from './modules/resend-retry.js?v=4';
   import { MatchEngine } from './modules/match-engine.js?v=6';
 
   // ===== i18n 国际化 =====
   const I18N = {
     zh: {
-      'app.title': 'fata — 找到文字频率最接近的陌生人',
-      'app.tagline': '写一段话，找到文字频率最接近的陌生人',
-      'app.ogTitle': 'fata — 找到文字频率最接近的陌生人',
-      'app.ogDesc': '写一段话，浏览器里的 AI 会找到此刻文字频率最接近的陌生人。通信在你自己的邮箱里进行。',
+      'app.title': 'fata — 深夜写下的文字，会遇到另一个醒着的人',
+      'app.tagline': '写下让你醒着的事，它会遇到另一个醒着的人',
+      'app.ogTitle': 'fata — 深夜写下的文字，会遇到另一个醒着的人',
+      'app.ogDesc': '写下让你醒着的事。fata 会把你的文字与另一个醒着的人匹配，之后你们用邮箱通信。没有照片、没有滑动、没有即时聊天。',
 
-      'landing.placeholder': '今天在想什么？',
-      'landing.prompt1': '今天发生了一件让我...',
-      'landing.prompt2': '最近一直在想一个问题...',
-      'landing.prompt3': '如果有一个人能理解我...',
-      'landing.prompt4': '随便写点什么，不急',
+      'landing.placeholder': '今晚是什么让你醒着？',
+      'landing.nightline': '现在是深夜。有人和你一样醒着——写下你想对那个人说的话。',
+      'landing.prompt1': '房间里很安静，我还醒着，因为...',
+      'landing.prompt2': '今晚放不下的一件事...',
+      'landing.prompt3': '现在一定还有另一个人醒着，TA 在想...',
+      'landing.prompt4': '随便写写深夜的此刻，不急',
       'landing.showText': '匹配成功后向对方展示我的文字',
       'landing.allowSnippet': '允许匿名展示我的文字片段',
       'landing.deepMatch': '深度匹配',
@@ -717,11 +721,11 @@ window.addEventListener('unhandledrejection', function(e) {
       'returning.pending': '段还在等待。',
       'returning.newText': '写一段新的',
 
-      'waiting.feeling': '正在感受你的文字...',
+      'waiting.feeling': '正在听你的文字...',
       'waiting.addingToPool': '正在将你的文字放入匹配池...',
       'waiting.comparing': '正在将你的频率和池子里的文字进行对比...',
 
-      'submit.sending': '正在分析你的文字...',
+      'submit.sending': '正在把你的文字放进深夜...',
       'submit.retryable': '服务暂时繁忙，稍等再试就好',
 
       'match.resonanceFallback': '你们在此刻的频率很接近。',
@@ -737,18 +741,18 @@ window.addEventListener('unhandledrejection', function(e) {
       'match.emailSubject': '关于那件事——来自 fata 的引介',
       'match.emailBody': '嘿。\n\nfata 说我们的文字频率很接近。\n\n',
 
-      'nomatch.main': '你的文字在这里了。',
-      'nomatch.sub': '有人读懂了，就会来信。这可能需要一点时间。',
-      'nomatch.echoHint': '一段与你频率相近的话。也许你们会在下一次遇见。',
+      'nomatch.main': '你的文字留在深夜了。',
+      'nomatch.sub': '另一个醒着的人读到后，会写信给你。可能需要一点时间。',
+      'nomatch.echoHint': '一段来自某个深夜的文字。也许你们会在下一次遇见。',
       'nomatch.share': '分享 fata 给朋友',
 
-      'nomatch.shareTitle': 'fata — 找到文字频率最接近的陌生人',
+      'nomatch.shareTitle': 'fata — 深夜写下的文字，会遇到另一个醒着的人',
 
-      'interview.q1': '你今天打开 fata，最想有人跟你聊什么？',
+      'interview.q1': '今晚是什么让你醒着？',
       'interview.q2': '这种感觉是从什么时候开始的？',
-      'interview.q3': '有没有哪一刻让你觉得特别明显？',
-      'interview.q4': '如果有一个平行世界的你做了不同的选择，你觉得那个你会对现在的你说什么？',
-      'interview.q5': '最后一个问题——如果有一个人，听完你说的这些话，什么都不说，只是点点头——你觉得怎么样？',
+      'interview.q3': '打开 fata 之前，你试过什么？',
+      'interview.q4': '如果房间彻底安静，你想让另一个人读到什么？',
+      'interview.q5': '最后一个问题——如果另一个醒着的人今晚回信给你，你最想听到什么？',
       'interview.placeholder': '写点什么...',
       'interview.skipHint': '可以说"跳过"或"不知道"——没关系。',
       'interview.composing': '正在根据你的回答整理文字...',
@@ -766,13 +770,13 @@ window.addEventListener('unhandledrejection', function(e) {
       'email.tip': '推荐用 QQ 邮箱或 Outlook，无需任何配置',
 
       'snippets.label': '最近有人在写——',
-      'snippet.default1': '今天下班看到一只猫在雨里躲，想给它撑伞但...',
-      'snippet.default2': '失眠第三天。开始怀疑是不是床的问题而不是我的问题。',
-      'snippet.default3': '很久没联系的朋友突然发了条消息。我没回。不知道回什么。',
-      'echo.fallback': '最近在学吉他。手指磨破了但很开心。不知道为什么突然想做一件没有用的事。',
+      'snippet.default1': '凌晨一点，窗外的灯还亮着几盏。每一盏都像一个没答案的问题。',
+      'snippet.default2': '第三晚睡不着。开始怀疑是不是夜晚的问题，而不是我的问题。',
+      'snippet.default3': '搬到这个城市六周了。手机还停在原来的时区，我也一样。',
+      'echo.fallback': '凌晨在学吉他。手指有点疼，但深夜的安静好像变小了一点。',
 
       'share.matchHint': '把这次相遇告诉朋友 →',
-      'share.matchText': '刚刚，有一个人读到了我的文字。我们还收到了彼此的邮箱。这种感觉很奇怪，但很好。',
+      'share.matchText': '深夜，有一个人读到了我的文字。我们收到了彼此的邮箱。世界好像没那么空了。',
       'share.matchUrl': 'fata.uk',
       'share.copy': '复制这段话',
       'share.copied': '✓ 已复制',
@@ -785,7 +789,7 @@ window.addEventListener('unhandledrejection', function(e) {
       'status.matched': '已匹配',
       'status.expired': '已过期',
 
-      'footer.privacy': '通信在你自己的邮箱中进行。fata 只是一个引介工具——不存储、不查看、不参与你们的对话。',
+      'footer.privacy': '通信在你自己的邮箱中进行。fata 只是一个深夜引介工具——不存储、不查看、不参与你们的对话。',
       'footer.github': 'GitHub 开源',
       'footer.afdian': '爱发电',
       'footer.feedback': '有想法？写邮件给我',
@@ -859,24 +863,25 @@ window.addEventListener('unhandledrejection', function(e) {
       'safety.hotline2Name': '生命热线（24小时）',
     },
     en: {
-      'app.title': 'fata — Find the stranger whose frequency matches yours',
-      'app.tagline': 'Write a few lines. Find the stranger whose frequency matches yours.',
-      'app.ogTitle': 'fata — Find the stranger whose frequency matches yours',
-      'app.ogDesc': 'Write a few lines. AI in your browser finds the stranger whose emotional frequency matches yours. Communication happens in your own email.',
+      'app.title': 'fata — 2 a.m. words meet another awake person',
+      'app.tagline': 'Write what keeps you awake. It will meet another awake person.',
+      'app.ogTitle': 'fata — 2 a.m. words meet another awake person',
+      'app.ogDesc': 'Write what keeps you awake. fata matches your words with another awake person, then you write to each other by email. No photos. No swiping. No chat.',
 
-      'landing.placeholder': 'What\'s on your mind today?',
-      'landing.prompt1': 'Today something happened that made me...',
-      'landing.prompt2': 'I\'ve been thinking about this one thing...',
-      'landing.prompt3': 'If someone could truly understand me...',
-      'landing.prompt4': 'Just write whatever, no rush',
-      'landing.showText': 'Show my text to my match',
-      'landing.allowSnippet': 'Allow anonymous display of my text',
+      'landing.placeholder': 'What\'s keeping you awake tonight?',
+      'landing.nightline': 'It\'s late somewhere. Another person is awake right now. Write what you\'d say to them.',
+      'landing.prompt1': 'The room is quiet, and I\'m awake because...',
+      'landing.prompt2': 'The one thing I can\'t put down tonight is...',
+      'landing.prompt3': 'Someone else is awake right now, thinking about...',
+      'landing.prompt4': 'Just write what 2 a.m. feels like',
+      'landing.showText': 'Let my match read my words',
+      'landing.allowSnippet': 'Allow anonymous display of my words',
       'landing.deepMatch': 'Deep match',
       'landing.fastMatch': 'Fast match',
       'landing.deepMatchDesc': 'AI deeply understands your emotional tone for better accuracy',
       'landing.fastMatchDesc': 'Fully local, instant matching, no waiting needed',
-      'landing.deliver': 'Send',
-      'landing.interviewLink': 'Not sure what to write? Let AI help',
+      'landing.deliver': 'Send into the night',
+      'landing.interviewLink': 'Not sure what 2 a.m. sounds like? Let AI help',
       'landing.aboutLink': 'What is fata?',
 
       'loading.preparing': 'Preparing the word engine...',
@@ -885,41 +890,41 @@ window.addEventListener('unhandledrejection', function(e) {
       'returning.texts': 'pieces.',
       'returning.matched': 'found someone,',
       'returning.pending': 'still waiting.',
-      'returning.newText': 'Write something new',
+      'returning.newText': 'Write a new 2 a.m. letter',
 
-      'waiting.feeling': 'Feeling your words...',
-      'waiting.addingToPool': 'Adding your words to the pool...',
-      'waiting.comparing': 'Comparing your frequency with the pool...',
+      'waiting.feeling': 'Listening to your words...',
+      'waiting.addingToPool': 'Carrying your words into the night...',
+      'waiting.comparing': 'Finding another awake person...',
 
-      'submit.sending': 'Analyzing your words...',
+      'submit.sending': 'Carrying your words into the night...',
       'submit.retryable': 'Service is momentarily busy, try again shortly',
 
-      'match.resonanceFallback': 'Your frequencies are close right now.',
-      'match.icebreaker1': 'What were you thinking about?',
-      'match.icebreaker2': 'Ask them to recommend a song.',
-      'match.icebreaker3': 'Tell them how you felt that day.',
-      'match.otherWrote': 'They wrote —',
+      'match.resonanceFallback': 'Two awake people, close on the same frequency.',
+      'match.icebreaker1': 'What was the last thing you thought before opening fata?',
+      'match.icebreaker2': 'Send them the song that fits this night.',
+      'match.icebreaker3': 'Tell them what the quiet sounds like where you are.',
+      'match.otherWrote': 'The other awake person wrote —',
       'match.emailLabel': 'Their email',
       'match.icebreakerLabel': 'Not sure how to start? Try —',
-      'match.writeToTA': 'Write to them',
+      'match.writeToTA': 'Write them a letter',
       'match.copyEmail': 'Copy email',
-      'match.writeAgain': 'Write another',
-      'match.emailSubject': 'About that thing — introduced by fata',
-      'match.emailBody': 'Hey.\n\nfata says our word frequencies are close.\n\n',
+      'match.writeAgain': 'Write another letter',
+      'match.emailSubject': 'Someone else was awake too — a letter from fata',
+      'match.emailBody': 'Hey.\n\nfata found another awake person.\n\n',
 
-      'nomatch.main': 'Your words are here now.',
-      'nomatch.sub': 'When someone reads and understands, they\'ll write. It might take a little time.',
-      'nomatch.echoHint': 'A piece close to your frequency. Maybe you\'ll meet next time.',
-      'nomatch.share': 'Share fata with a friend',
+      'nomatch.main': 'Your words are here in the dark.',
+      'nomatch.sub': 'When another awake person finds them, they\'ll write. It might take a little time.',
+      'nomatch.echoHint': 'A piece from someone who was awake too. Maybe you\'ll meet next time.',
+      'nomatch.share': 'Share fata with someone awake',
 
-      'nomatch.shareTitle': 'fata — Find the stranger whose frequency matches yours',
+      'nomatch.shareTitle': 'fata — 2 a.m. words meet another awake person',
 
-      'interview.q1': 'What do you most want someone to talk with you about today?',
-      'interview.q2': 'When did this feeling start?',
-      'interview.q3': 'Was there a moment when it felt especially clear?',
-      'interview.q4': 'If a parallel-universe you had made different choices, what would they say to you now?',
-      'interview.q5': 'Last question — If someone heard all of this and just nodded, saying nothing — how would that feel?',
-      'interview.placeholder': 'Write something...',
+      'interview.q1': 'What\'s keeping you awake tonight?',
+      'interview.q2': 'When did tonight start to feel this heavy?',
+      'interview.q3': 'What did you try before you opened fata?',
+      'interview.q4': 'If the room were completely quiet, what would you want someone to read?',
+      'interview.q5': 'Last question — if another awake person wrote back tonight, what would you want them to say?',
+      'interview.placeholder': 'Write what 2 a.m. sounds like...',
       'interview.skipHint': 'You can say "skip" or "I don\'t know" — that\'s fine.',
       'interview.composing': 'Putting together your words...',
       'interview.composed': 'I wrote something based on what you said. You can send it as-is or edit it.',
@@ -935,14 +940,14 @@ window.addEventListener('unhandledrejection', function(e) {
       'email.confirm': 'Confirm',
       'email.tip': 'Gmail or Outlook recommended — no setup needed',
 
-      'snippets.label': 'People have been writing —',
-      'snippet.default1': 'Saw a cat hiding from rain after work today. Wanted to share my umbrella but...',
-      'snippet.default2': 'Third night of insomnia. Starting to wonder if it\'s the bed, not me.',
-      'snippet.default3': 'An old friend messaged out of nowhere. I didn\'t reply. Didn\'t know what to say.',
-      'echo.fallback': 'Learning guitar lately. Fingers are raw but happy. Not sure why I suddenly wanted to do something useless.',
+      'snippets.label': 'Other people are awake writing —',
+      'snippet.default1': 'Can\'t sleep, so I\'m watching the city from my window. Every other light looks like a question.',
+      'snippet.default2': 'Third night awake. Starting to wonder if it\'s the night, or me.',
+      'snippet.default3': 'I moved here six weeks ago. My phone is in the wrong time zone, and so am I.',
+      'echo.fallback': 'Learning guitar at 1 a.m. My fingers hurt, but the quiet feels smaller tonight.',
 
       'share.matchHint': 'Tell a friend about this moment →',
-      'share.matchText': 'Someone just read my words. We got each other\'s email. It feels strange, and good.',
+      'share.matchText': 'At 2 a.m., someone read my words. We got each other\'s email. The world felt less empty.',
       'share.matchUrl': 'fata.uk',
       'share.copy': 'Copy',
       'share.copied': '✓ Copied',
@@ -955,11 +960,11 @@ window.addEventListener('unhandledrejection', function(e) {
       'status.matched': 'Matched',
       'status.expired': 'Expired',
 
-      'footer.privacy': 'Communication happens in your own email. fata is only an introduction tool — it doesn\'t store, view, or participate in your conversations.',
+      'footer.privacy': 'Communication happens in your own email. fata is only a 2 a.m. introduction — it doesn\'t store, view, or participate in your conversations.',
       'footer.github': 'GitHub',
       'footer.afdian': 'Support',
       'footer.feedback': 'Got thoughts? Email me',
-      'footer.crisis': '',
+      'footer.crisis': 'If tonight is too heavy: 988 (US) · 988 (CA) · 116 123 (UK) · 24/7 · free · anonymous',
       'footer.langSwitch': '中文',
 
       'init.error': 'fata is getting ready... If nothing happens for a while, please refresh the page.',
@@ -1025,15 +1030,15 @@ window.addEventListener('unhandledrejection', function(e) {
       'safety.supportNewText': 'Write something new',
       'safety.supportHistory': 'See what you\'ve written before',
       'safety.supportFooter': 'fata won\'t flag you, limit you, or leave you waiting forever. Whenever it is, you deserve to be heard.',
-      'safety.hotline1Name': 'Beijing Mental Health Hotline (24h)',
-      'safety.hotline2Name': 'Lifeline (24h)',
+      'safety.hotline1Name': '988 Suicide & Crisis Lifeline (US, 24/7)',
+      'safety.hotline2Name': 'Samaritans (UK, 24/7)',
     }
   };
 
   let currentLang;
   try { currentLang = localStorage.getItem('fata_lang'); } catch (e) { /* Safari incognito */ }
-  currentLang = currentLang || (navigator.language.startsWith('en') ? 'en' : 'zh');
-  if (!['zh','en'].includes(currentLang)) currentLang = 'zh';
+  currentLang = currentLang || (navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en');
+  if (!['zh','en'].includes(currentLang)) currentLang = 'en';
   window.currentLang = currentLang;
 
   // Test mode: ?test=1 URL parameter marks submissions as test (not real user)
@@ -1175,6 +1180,7 @@ window.addEventListener('unhandledrejection', function(e) {
     const footer = document.getElementById('page-footer');
     footer.innerHTML = `
       <p>${t('footer.privacy')}</p>
+      ${SafetyHandler.getFooterResourcesHTML()}
       <p>
         <a href="https://github.com/gsailing19/fata" target="_blank">${t('footer.github')}</a>
         &nbsp;·&nbsp;
@@ -1251,9 +1257,7 @@ window.addEventListener('unhandledrejection', function(e) {
           </svg>
         </div>
 
-        <p class="worldcup-banner" style="text-align:center;font-size:14px;color:var(--warm);margin:12px 0 0;opacity:0.8;">
-          ⚽ Watching the World Cup alone? Write how you feel after the match — find a stranger on the same frequency.
-        </p>
+        <p class="landing-nightline">${t('landing.nightline')}</p>
 
         <div class="landing-editor">
           <textarea id="user-text" placeholder="${t('landing.placeholder')}"></textarea>
@@ -1592,15 +1596,16 @@ window.addEventListener('unhandledrejection', function(e) {
   // 用户主动撤回 pending 文字
   async function deletePendingText(id, issueNumber) {
     try {
-      // 关闭 GitHub Issue
-      const endpoint = '/api/github/issues/' + issueNumber;
+      // 通过 Worker 的 withdraw 端点关闭 Issue 并清理 KV
+      const endpoint = '/api/withdraw';
       const headers = _buildTokenHeaders();
       const resp = await fetch(API_BASE + endpoint, {
-        method: 'PATCH',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ state: 'closed' })
+        body: JSON.stringify({ issueNumber })
       });
-      if (!resp.ok) throw new Error('Close issue failed: ' + resp.status);
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data.success) throw new Error(data.error || ('Withdraw failed: ' + resp.status));
 
       // 从本地状态移除
       state.pendingTexts = state.pendingTexts.filter(t => t.id !== id);

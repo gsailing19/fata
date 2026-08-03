@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>关于 fata</title>
+<title>fata — 2 a.m. words meet another awake person</title>
 <style>
   :root {
     --bg: #f5f5f7;
@@ -84,10 +84,10 @@
 <div class="module">
   <div class="module-num">01</div>
   <h2>这是什么</h2>
-  <p>一个用 AI 帮你找到陌生人的地方。</p>
-  <p>你写一段话。AI 理解你的文字，找到适合跟你对话的人。</p>
+  <p>一个让深夜文字遇到另一个醒着的人的地方。</p>
+  <p>你写下今晚让你醒着的事。fata 用文字找到与你频率接近的人。</p>
   <p>然后——你们在各自的邮箱里通信。</p>
-  <p>简单。私密。</p>
+  <p>没有照片。没有滑动。没有即时聊天。</p>
 </div>
 
 <div class="sep"></div>
@@ -95,9 +95,9 @@
 <div class="module">
   <div class="module-num">02</div>
   <h2>AI 怎么匹配</h2>
-  <p>把你心里想的写下来——</p>
-  <p>你想找什么样的人，想聊什么样的话题。</p>
-  <p>AI 读懂你的文字，在等待的人里，帮你找到适合对话的那一个。</p>
+  <p>写下今晚在想什么——</p>
+  <p>为什么醒着、放不下什么、想被怎样理解。</p>
+  <p>fata 读懂你的文字，在同样醒着的人里，帮你找到最接近的那一个。</p>
 </div>
 
 <div class="sep"></div>
@@ -105,13 +105,13 @@
 <div class="module">
   <div class="module-num">03</div>
   <h2>怎么开始</h2>
-  <p>① 打开 fata.uk，写下你想说的话</p>
+  <p>① 打开 fata.uk，写下今晚让你醒着的事</p>
   <p>② 留下你的邮箱（加密存储）</p>
-  <p>③ AI 找到匹配的人，双方互收到对方的邮箱</p>
-  <p>④ 打开你的邮箱，给对方写第一封信</p>
+  <p>③ fata 找到另一个醒着的人，双方互收到对方的邮箱</p>
+  <p>④ 打开你的邮箱，给对方写第一封深夜的信</p>
   <br>
   <p>没有聊天室。没有在线状态。没有已读回执。</p>
-  <p>就像写邮件——AI 只是帮你找到了该收信的那个人。</p>
+  <p>就像写信——fata 只是帮你找到了该收信的那个人。</p>
 </div>
 
 <div class="sep"></div>
@@ -135,10 +135,10 @@
 <div class="module">
   <div class="module-num">01</div>
   <h2>What is fata</h2>
-  <p>A place where AI helps you find a stranger.</p>
-  <p>You write a few lines. AI understands your words, finds someone worth talking to.</p>
-  <p>Then — you talk in your own email.</p>
-  <p>Simple. Private.</p>
+  <p>A place where 2 a.m. words meet another awake person.</p>
+  <p>You write what's keeping you awake. fata finds someone whose words sit close to yours.</p>
+  <p>Then — you write to each other in your own email.</p>
+  <p>No photos. No swiping. No chat.</p>
 </div>
 
 <div class="sep"></div>
@@ -146,9 +146,9 @@
 <div class="module">
   <div class="module-num">02</div>
   <h2>How AI matches</h2>
-  <p>Write what's on your mind —</p>
-  <p>who you want to find, what you want to talk about.</p>
-  <p>AI understands your words, and finds someone worth the conversation.</p>
+  <p>Write what's keeping you awake —</p>
+  <p>why you're up, what you can't put down, how you want to be read.</p>
+  <p>fata understands your words and finds another awake person worth the conversation.</p>
 </div>
 
 <div class="sep"></div>
@@ -156,13 +156,13 @@
 <div class="module">
   <div class="module-num">03</div>
   <h2>How it works</h2>
-  <p>① Open fata.uk, write what's on your mind</p>
+  <p>① Open fata.uk, write what's keeping you awake</p>
   <p>② Leave your email (encrypted)</p>
   <p>③ AI finds your match, you both get each other's email</p>
-  <p>④ Open your inbox and write the first message</p>
+  <p>④ Open your inbox and write the first letter</p>
   <br>
   <p>No chat rooms. No online status. No read receipts.</p>
-  <p>Like emailing — AI just helped you find the right person.</p>
+  <p>Like a letter — fata just helped you find the right address.</p>
 </div>
 
 <div class="sep"></div>
@@ -185,8 +185,8 @@
 <script>
   const params = new URLSearchParams(window.location.search);
   const langParam = params.get('lang');
-  let currentLang = 'zh';
-  if (langParam === 'en') currentLang = 'en';
+  let currentLang = navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  if (langParam === 'en' || langParam === 'zh') currentLang = langParam;
 
   function showLang(lang) {
     currentLang = lang;

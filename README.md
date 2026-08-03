@@ -6,15 +6,15 @@
 
 > *Fata viam invenient.* — Fate will find a way.
 
-**[fata.uk](https://fata.uk)** — open a webpage, write a few lines, find a stranger whose emotional frequency matches yours. Then talk in your **own email**. No app. No signup. No server.
+**[fata.uk](https://fata.uk)** — open a webpage, write what keeps you awake, meet another awake person whose words resonate. Then write to each other in your **own email**. No app. No photos. No swiping. No chat.
 
 ---
 
 ## What is fata
 
-fata matches strangers by emotional frequency, not by photos or tags. You write what's on your mind. A signal heuristic in your browser scores your text instantly. A Cloudflare Worker generates a BGE-M3 embedding, encrypts it, and finds your match in the pool. Matched users get each other's email address. Communication happens entirely in your own inbox — fata never touches your messages.
+fata matches awake people by the emotional shape of their words, not by photos or tags. You write what's keeping you awake at 2 a.m. A signal heuristic in your browser scores your text instantly. A Cloudflare Worker generates a BGE-M3 embedding, encrypts it, and finds another awake person in the pool. Matched users get each other's email address. Communication happens entirely in your own inbox — fata never touches your messages.
 
-**fata = fate + data.** Two strangers meeting — part AI matching, part serendipity.
+**fata = fate + data.** Two awake people meeting — part AI matching, part serendipity.
 
 ---
 
