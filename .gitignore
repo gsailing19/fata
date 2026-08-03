@@ -90,3 +90,9 @@ node_modules/
 # --- Codex 内部备份（不公开） ---
 codex/private-worker/
 codex/snapshots/
+
+# --- 内部审计与草稿（不公开） ---
+config/param-candidates.json
+fata_fix_recommendations.md
+fata_security_review.md
+分发-*.md
