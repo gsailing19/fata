@@ -85,3 +85,8 @@ config/scenario-tests.json
 
 # --- 构建产物 ---
 dist/
+node_modules/
+
+# --- Codex 内部备份（不公开） ---
+codex/private-worker/
+codex/snapshots/

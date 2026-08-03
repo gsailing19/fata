@@ -1,0 +1,23 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  local-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JS syntax
+        run: |
+          set -e
+          for f in modules/*.js tools/*.js; do
+            node --check "$f"
+          done
+      - name: Run invariant tests
+        run: node tools/invariant-tests.js

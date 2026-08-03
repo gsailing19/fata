@@ -1,0 +1,114 @@
+$ node tools/invariant-tests.js
+
+  Invariant tests: 54 passed, 0 failed (total 54)
+  All invariants hold.
+
+
+$ node tools/algo-test.js --lang zh
+═══════════════════════════════════════
+  fata 算法模拟测试 · v3.0.0
+  语言: zh  |  嵌入模式: bigram
+  配置: 3.1.0
+  阈值: 0.48 (base=0.46 + cooling=0.02)  |  pending≈0
+═══════════════════════════════════════
+
+  ✗ #embedding_intent_conflict        score=0.502  期望不匹配
+     余弦=0.707  意图=0.453  风格=0.50  信号=0.227
+
+  语言: zh  |  总用例: 14  |  should_match: 8  |  should_not_match: 6
+  TP=8  FP=1  TN=5  FN=0
+
+  精确率:   88.9%  (8/9)
+  召回率:   100.0%  (8/8)
+  准确率:   92.9%
+  F1:       94.1%
+
+── 失败用例 ──
+  ✗ #embedding_intent_conflict  期望不匹配(误匹配)
+     score=0.502  threshold=0.48  cosine=0.707
+     语义相似但意图冲突：都在聊失眠，但一个要倾诉一个只想闲聊
+
+── 分数分布 ──
+  should_match:     min=0.636  max=0.786  median=0.730
+  should_not_match: min=0.365  max=0.502  median=0.446
+  分界线间隔: 0.133 (健康)
+
+  Result: F1=94.1%
+═══════════════════════════════════════
+
+$ node tools/algo-test.js --lang en
+═══════════════════════════════════════
+  fata 算法模拟测试 · v3.0.0
+  语言: en  |  嵌入模式: bigram
+  配置: 3.1.0
+  阈值: 0.42 (base=0.46 + cooling=0.02)  |  pending≈0
+═══════════════════════════════════════
+
+  ✗ #need_same_listen                 score=0.643  期望不匹配
+     余弦=0.762  意图=0.720  风格=0.30  信号=0.540
+  ✗ #emotion_resonance_02             score=0.434  期望不匹配
+     余弦=0.711  意图=0.387  风格=0.30  信号=0.234
+  ✗ #embedding_intent_conflict        score=0.486  期望不匹配
+     余弦=0.707  意图=0.488  风格=0.30  信号=0.227
+  ✗ #en_need_same_be_heard            score=0.473  期望不匹配
+     余弦=0.897  意图=0.475  风格=0.90  信号=0.540
+
+  语言: en  |  总用例: 14  |  should_match: 8  |  should_not_match: 6
+  TP=8  FP=4  TN=2  FN=0
+
+  精确率:   66.7%  (8/12)
+  召回率:   100.0%  (8/8)
+  准确率:   71.4%
+  F1:       80.0%
+
+── 失败用例 ──
+  ✗ #need_same_listen  期望不匹配(误匹配)
+     score=0.643  threshold=0.42  cosine=0.762
+     两个人都要'被倾听' — 双向等待，消极匹配
+  ✗ #emotion_resonance_02  期望不匹配(误匹配)
+     score=0.434  threshold=0.42  cosine=0.711
+     情绪错位：一个轻度无聊，一个深度痛苦
+  ✗ #embedding_intent_conflict  期望不匹配(误匹配)
+     score=0.486  threshold=0.42  cosine=0.707
+     语义相似但意图冲突：都在聊失眠，但一个要倾诉一个只想闲聊
+  ✗ #en_need_same_be_heard  期望不匹配(误匹配)
+     score=0.473  threshold=0.42  cosine=0.897
+     EN: both want to be heard — bidirectional waiting, should not match
+
+── 分数分布 ──
+  should_match:     min=0.506  max=0.786  median=0.592
+  should_not_match: min=0.348  max=0.643  median=0.454
+  分界线间隔: -0.137 (有重叠!)
+
+  Result: F1=80.0%
+═══════════════════════════════════════
+
+$ node tools/evaluate-matching.js
+══════════════════════════════════════════════
+  fata 匹配算法 · 场景模拟评估
+  配置: 3.1.0  |  语言: zh  |  嵌入: bigram
+  冷却: α_low=0.02  α=0.04  α_high=0.07
+  场景数: 20  |  等级分布: A=4, B=5, C=4, D=7
+══════════════════════════════════════════════
+
+── 等级分布 ──
+  A(绝配): 4个  avg=0.764  range=[0.737, 0.785]
+  B(良配): 5个  avg=0.701  range=[0.627, 0.744]
+  C(弱配): 4个  avg=0.524  range=[0.432, 0.646]
+  D(不配): 7个  avg=0.425  range=[0.338, 0.517]
+
+── 评估结果 ──
+  Spearman ρ: 0.902 ★ 强相关
+  等级分离: ✗ 重叠严重
+
+── 维度诊断 ──
+  need: ↑0 ↓3  complement_need_advice(↓), style_mismatch_good_rest(↓)
+  emotion: ↑0 ↓4  complement_need_advice(↓), style_mismatch_good_rest(↓)
+  topic: ↑0 ↓4  complement_need_advice(↓), style_mismatch_good_rest(↓)
+  depth: ↑0 ↓4  complement_need_advice(↓), style_mismatch_good_rest(↓)
+  style: ↑0 ↓2  complement_need_advice(↓), style_mismatch_good_rest(↓)
+  signal: ↑0 ↓2  complement_need_advice(↓), style_mismatch_good_rest(↓)
+  aim: ↑0 ↓4  complement_need_advice(↓), style_mismatch_good_rest(↓)
+
+  Result: ρ=0.902
+══════════════════════════════════════════════
