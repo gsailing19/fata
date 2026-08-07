@@ -25,30 +25,32 @@ else
 fi
 set +a
 
-if [[ -n "${BASH_SOURCE:-}" ]]; then
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-else
-  SCRIPT_DIR="$PWD"
+SETTINGS_FILE="${FATA_SETTINGS_FILE:-}"
+if [[ -z "$SETTINGS_FILE" && -f "$PWD/.claude/settings.local.json" ]]; then
+  SETTINGS_FILE="$PWD/.claude/settings.local.json"
 fi
-
-SETTINGS_FILE="${FATA_SETTINGS_FILE:-$SCRIPT_DIR/../.claude/settings.local.json}"
+if [[ -z "$SETTINGS_FILE" && -n "${BASH_SOURCE:-}" ]]; then
+  SETTINGS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)/.claude/settings.local.json"
+fi
+if [[ -z "$SETTINGS_FILE" && -f "$HOME/.claude/settings.local.json" ]]; then
+  SETTINGS_FILE="$HOME/.claude/settings.local.json"
+fi
 
 if [[ ! -f "$SETTINGS_FILE" ]]; then
   echo "load-secrets: warning: $SETTINGS_FILE not found" >&2
   return 0 2>/dev/null || exit 0
 fi
 
-while IFS= read -r -d '' key; do
-  IFS= read -r -d '' value
-  if [[ -z "${!key:-}" ]]; then
-    export "$key=$value"
-  fi
-done < <(node -e '
-  const fs = require("fs");
-  const file = process.argv[1];
-  const data = JSON.parse(fs.readFileSync(file, "utf8"));
-  const env = data.env || {};
-  for (const [key, value] of Object.entries(env)) {
-    process.stdout.write(key + "\0" + String(value) + "\0");
-  }
-' "$SETTINGS_FILE")
+NODE_HELPER="${FATA_LOAD_SECRETS_NODE:-}"
+if [[ -z "$NODE_HELPER" && -f "$PWD/tools/load-secrets-node.js" ]]; then
+  NODE_HELPER="$PWD/tools/load-secrets-node.js"
+fi
+if [[ -z "$NODE_HELPER" && -n "${BASH_SOURCE:-}" ]]; then
+  NODE_HELPER="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/load-secrets-node.js"
+fi
+if [[ -z "$NODE_HELPER" || ! -f "$NODE_HELPER" ]]; then
+  echo "load-secrets: warning: load-secrets-node.js not found" >&2
+  return 0 2>/dev/null || exit 0
+fi
+
+eval "$(node "$NODE_HELPER" "$SETTINGS_FILE")"

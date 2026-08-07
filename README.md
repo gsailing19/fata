@@ -47,8 +47,8 @@ You write text
 ```
 
 - **First visit**: ~100ms (no model download)
-- **Matching**: Chinese F1=94.1% / English F1=80.0% (see [algo tests](tools/algo-test.js))
-- **Invariants**: 54/54 assertions pass (see [invariant tests](tools/invariant-tests.js))
+- **Matching**: Chinese F1=94.1% / English F1=84.2% (see [algo tests](tools/algo-test.js))
+- **Invariants**: 70/70 assertions pass (see [invariant tests](tools/invariant-tests.js))
 
 ---
 
