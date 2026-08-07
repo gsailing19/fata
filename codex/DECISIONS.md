@@ -69,5 +69,5 @@
 - 原因：R-15 会让旧工具继续产生无法匹配的数据；R-11 缺少本地 Worker 测试；beacon 与 Cloudflare PV 偏差过大。
 - 验证：invariant 70/70；Worker match-core 单测 37/37；zh F1 94.1%；en F1 84.2%；ρ 0.902；E2E 15/15。
 - 部署：Worker 版本 `0083d0e4-26c5-46f1-881d-6140132e359b`；Pages 已发布。
-- 成本：Cloudflare 用量已自动采集；Resend/SiliconFlow 缺本地凭据，待人工填写。
+- 成本：Cloudflare 用量、Resend 34 封、SiliconFlow 余额已自动采集；金额待控制台确认。
 - 快照：`codex/snapshots/2026-08-07-worker-hardening/`、`codex/snapshots/2026-08-07-final/`。

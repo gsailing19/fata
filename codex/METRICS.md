@@ -28,7 +28,7 @@
 - `select_reason` 已进入 beacon 与 `/api/audit/stats`，可看原因标签漏斗。
 - 匹配引擎只处理 `_kv>=4` 候选；旧格式直接跳过并记录 debug。
 - E2E CI 提供手动 `workflow_dispatch` 入口，密钥缺失会失败而不是静默跳过。
-- 成本采集：Cloudflare 本月用量已自动记录；Resend/SiliconFlow 待人工填写。
+- 成本采集：Cloudflare 用量、Resend 34 封、SiliconFlow 余额均已自动记录；金额待各控制台确认。
 
 ## 待建立基线
 
