@@ -109,6 +109,12 @@
 - `[x]` E2E CI 工作流脚手架：`.github/workflows/e2e.yml`，仅手动触发。
 - `[x]` 成本台账工具：`tools/cost-ledger.js` + `codex/COSTS.md` 月度模板。
 - `[x]` 延迟项路线图：`codex/ROADMAP-2026-08-07.md`（Worker 单测、观测、算法校准）。
+- `[x]` 移除 `/api/github/issues` 旧拦截（R-15），旧 seed 注入工具标记废弃。
+- `[x]` 抽取 `tools/worker-match-core.js` 纯逻辑并新增 37 项单测，接入本地验证和 CI。
+- `[x]` beacon 增加 `fetch keepalive` 兜底，减少 PV 丢失。
+- `[x]` 清理 `config/algorithm-config.json` 中 `limits` 死配置。
+- `[x]` 成本采集：`tools/cost-collector.js`，Cloudflare 用量已记录；Resend/SiliconFlow 待人工凭据。
+- `[ ]` 提供新的 `_kv4` + FATA_DATA KV seed 写入端点（R-17）。
 
 ## 已完成基线
 

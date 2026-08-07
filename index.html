@@ -1090,7 +1090,19 @@ window.addEventListener('unhandledrejection', function(e) {
     _beaconSent[key] = true;
     try {
       const body = JSON.stringify({ event: evt, lang: currentLang, timestamp: Date.now(), ...extra });
-      navigator.sendBeacon(`${APIClient._activeBase || 'https://fata.uk'}/api/beacon`, body);
+      const url = `${APIClient._activeBase || 'https://fata.uk'}/api/beacon`;
+      let sent = false;
+      try {
+        sent = navigator.sendBeacon(url, body);
+      } catch (_) { /* fall through to fetch keepalive */ }
+      if (!sent) {
+        fetch(url, {
+          method: 'POST',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body
+        }).catch(() => { /* beacon is best-effort */ });
+      }
     } catch (_) { /* beacon is best-effort */ }
   }
 

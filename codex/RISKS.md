@@ -14,12 +14,13 @@
 | R-08 | P2 | Resend 发送前未检查退订列表 | `ideas-todo.md:33`、`config/worker.js:921` | mitigated |
 | R-09 | P2 | beacon 漏斗与 Cloudflare PV 偏差巨大（1 vs 73） | `tools/audit-logs/audit-latest.log:47`、`:48` | mitigated |
 | R-10 | P2 | 旧模块仍引用 `worker.fata.uk` 和 `HMAC_KEY_RAW`，存在误导和误用风险 | `modules/match-engine.js` | verified |
-| R-11 | P2 | 无本地 Worker 测试/CI，回归只能依赖线上 E2E | `codex/VERIFY.md` | mitigated |
+| R-11 | P2 | 无本地 Worker 测试/CI，回归只能依赖线上 E2E | `tools/worker-match-core-test.js`、`.github/workflows/ci.yml` | verified |
 | R-12 | P2 | 匹配池仍无真实用户 pending，冷启动和真实匹配未验证 | `tools/audit-logs/audit-latest.log` | mitigated |
-| R-13 | P3 | `max_match_count` 等配置为死代码，优化指标缺失 | `ideas-todo.md:36` | open |
+| R-13 | P3 | `max_match_count` 等配置为死代码，优化指标缺失 | `config/algorithm-config.json` | verified |
 | R-14 | P2 | 新增时区硬过滤：双方都有偏移且重叠不足 3 小时时直接跳过，小池匹配率可能下降；旧 seed 无偏移不受影响 | `tools/match-core.js`、`config/worker.js` | open |
-| R-15 | P2 | `/api/github/issues` 旧创建路径仍会把 Issue 写成 `_kv=2`，若仍有客户端走该路径将不再参与匹配 | `config/worker.js:314-330` | open |
+| R-15 | P2 | `/api/github/issues` 旧创建路径仍会把 Issue 写成 `_kv=2`，若仍有客户端走该路径将不再参与匹配 | `config/worker.js` | verified |
 | R-16 | P2 | E2E CI 仍是手动工作流，未配置受保护 secrets/私有仓库，误触发会污染线上池 | `.github/workflows/e2e.yml` | mitigated |
+| R-17 | P2 | 旧 seed 注入工具已废弃，尚未提供新的 `_kv4` + FATA_DATA KV seed 写入路径 | `tools/inject-zh-seeds.js`、`tools/inject-en-seeds.js`、`tools/inject-en-bootstrap.js` | open |
 
 ## 风险更新规则
 

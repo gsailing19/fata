@@ -71,3 +71,5 @@
 - beacon 使用唯一 key + 前缀统计，避免并发计数丢失；Cloudflare PV 仍可能高于 beacon（包含无 JS 流量）。
 - `select_reason` 事件按 reason 写入唯一 key，`/api/audit/stats` 返回原因分布。
 - 匹配引擎只处理 `_kv>=4` + FATA_DATA KV 候选；旧格式直接跳过并记录 debug。
+- 匹配纯逻辑在 `tools/worker-match-core.js`，`findMatchInPool` 只做 I/O 适配，可本地单测。
+- beacon 同时支持 `navigator.sendBeacon` 与 `fetch keepalive` 兜底。

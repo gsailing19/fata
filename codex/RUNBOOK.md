@@ -52,6 +52,19 @@ node tools/weekly-backtest.js
 
 报告写入 `codex/backtests/YYYY-MM-DD.txt`。
 
+## 成本采集
+
+```bash
+source tools/load-secrets.sh
+node tools/cost-collector.js --month 2026-08 --write
+```
+
+Cloudflare 可用本地 token 自动采集；Resend/SiliconFlow 需要对应 API Key，缺失时输出 `missing_credential`，金额从控制台人工填写。
+
+## 旧 seed 注入
+
+`tools/inject-zh-seeds.js`、`tools/inject-en-seeds.js`、`tools/inject-en-bootstrap.js` 已废弃，直接运行会退出码 2。新的 seed 写入端点待实现（R-17）。
+
 ## 只读审计
 
 ```bash

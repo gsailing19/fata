@@ -7,6 +7,7 @@
 | 命令 | 类型 | 是否联网 | 说明 |
 |------|------|----------|------|
 | `node tools/invariant-tests.js` | 本地 | 否 | 算法不变量，70 项 |
+| `node tools/worker-match-core-test.js` | 本地 | 否 | Worker 匹配纯逻辑，37 项 |
 | `node tools/algo-test.js --lang zh` | 本地 | 否 | 中文配对 F1 |
 | `node tools/algo-test.js --lang en` | 本地 | 否 | 英文配对 F1 |
 | `node tools/evaluate-matching.js` | 本地 | 否 | 场景等级相关性 |

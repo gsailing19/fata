@@ -11,7 +11,7 @@ fata.uk 是一个“零服务器”的深夜文字连接产品：用户写下“
 
 - 已上线：Cloudflare Pages + Worker + KV，fata.uk 可访问。
 - 线上首页已切换为 2 a.m. 定位：`fata — 2 a.m. words meet another awake person`。
-- Worker 已部署版本：`80fedc79-3fd0-422f-ac7a-cb851ea36f34`（2026-08-07，兼容路径清理 + 原因漏斗后）。
+- Worker 已部署版本：`0083d0e4-26c5-46f1-881d-6140132e359b`（2026-08-07，Worker 硬化后）。
 - Git：本地与远端 `main` 同步，工作树干净。
 - 匹配池：93 条 seed、8 条 matched、0 条真实用户 pending（2026-08-02 审计口径）。
 - 真实用户仍为 0；冷启动和真人匹配验证尚未开始。

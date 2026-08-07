@@ -19,5 +19,7 @@ jobs:
           for f in modules/*.js tools/*.js; do
             node --check "$f"
           done
+      - name: Run Worker match-core unit tests
+        run: node tools/worker-match-core-test.js
       - name: Run local verification
         run: node tools/verify-local.js

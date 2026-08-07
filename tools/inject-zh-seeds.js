@@ -13,6 +13,10 @@ const https = require('https');
 const WORKER = process.env.FATA_WORKER_URL || 'https://fata.uk';
 const HMAC_KEY = process.env.FATA_HMAC_KEY || '';
 
+// DEPRECATED 2026-08-07: 直接 POST /api/github/issues 不再写 FATA_DATA KV，
+// 该工具创建出的 _kv4 Issue 无法参与匹配。生产写入请走 /api/submit 链路。
+const DEPRECATED = true;
+
 const SEEDS = [
   // 孤独/被倾听 (5)
   "搬来这个城市半年了，除了同事一个朋友都没交到。周末有时候两天都不出门，也不跟任何人说话。不是不想社交，是真的不知道怎么开始了。",
@@ -126,6 +130,12 @@ function fetchJSON(url, options = {}) {
 }
 
 async function injectSeeds() {
+  if (DEPRECATED) {
+    console.error('DEPRECATED: inject-zh-seeds.js no longer writes FATA_DATA KV via /api/github/issues.');
+    console.error('Use /api/submit (PoW + session token) or a maintenance endpoint that writes _kv4 + FATA_DATA KV.');
+    process.exit(2);
+  }
+
   if (!HMAC_KEY || HMAC_KEY.length < 16) {
     console.error('FATA_HMAC_KEY environment variable required (min 16 chars)');
     process.exit(1);

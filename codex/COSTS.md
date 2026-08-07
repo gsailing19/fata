@@ -4,11 +4,22 @@
 
 | 项目 | 计划 | 数据来源 | 上月 | 本月 | 备注 |
 |------|------|----------|------|------|------|
-| Resend | 免费 3000 封/月 | Resend Dashboard | 未记录 | 未记录 | 超量后按量计费；E2E 会触发测试邮件 |
-| SiliconFlow / DeepSeek | 按量 | SiliconFlow 控制台 | 未记录 | 未记录 | BGE-M3 embedding + 共振 LLM |
-| Cloudflare Workers/Pages/KV | 免费层 | Cloudflare Dashboard | 未记录 | 未记录 | 10K DAU 以下预计免费 |
-| GitHub Actions / GitHub | 免费 / 公开仓库 | GitHub 用量页 | 未记录 | 未记录 | E2E 为手动触发的真实链路，会占用 Actions 分钟数 |
-| fata.uk 域名 | 年费 | 域名注册商 | 未记录 | 未记录 | 约 ¥70/年 |
+| Resend | 免费 3000 封/月 | Resend Dashboard | 未记录 | 待人工填写（缺 RESEND_API_KEY） | 超量后按量计费；E2E 会触发测试邮件 |
+| SiliconFlow / DeepSeek | 按量 | SiliconFlow 控制台 | 未记录 | 待人工填写（缺 SILICONFLOW_API_KEY） | BGE-M3 embedding + 共振 LLM |
+| Cloudflare Workers/Pages/KV | 免费层 | Cloudflare Dashboard | 未记录 | 自动采集：HTTP 2567, KV 2840, Worker 1523 | 10K DAU 以下预计免费 |
+| GitHub Actions / GitHub | 免费 / 公开仓库 | GitHub 用量页 | 未记录 | 待人工填写 | E2E 为手动触发的真实链路，会占用 Actions 分钟数 |
+| fata.uk 域名 | 年费 | 域名注册商 | 未记录 | 待人工填写 | 约 ¥70/年 |
+
+## 自动采集
+
+先加载密钥，再运行采集器写入本月记录：
+
+```bash
+source tools/load-secrets.sh
+node tools/cost-collector.js --month 2026-08 --write
+```
+
+采集器只读环境变量，不打印密钥。Cloudflare 用量来自 GraphQL；账单接口无权限时金额标为“待人工填写”。Resend / SiliconFlow 缺密钥时输出 `missing_credential`，不会伪造数字。
 
 ## 月度记录
 
@@ -24,6 +35,9 @@ node tools/cost-ledger.js --month 2026-08 \
 
 | 日期 | 服务 | 金额 (CNY) | 备注 |
 |------|------|------------|------|
+| 2026-08-07 | Cloudflare | 待人工填写 | 自动采集 2026-08：HTTP 2567, KV 2840, Worker 1523 请求 / 0 错误, 59 keys / 354872 bytes；免费计划，账单 API 无权限 |
+| 2026-08-07 | Resend | 待人工填写 | RESEND_API_KEY 缺失，需从 Resend Dashboard 人工填写 |
+| 2026-08-07 | SiliconFlow | 待人工填写 | SILICONFLOW_API_KEY 缺失，需从 SiliconFlow 控制台人工填写 |
 
 ## 月度记录流程
 

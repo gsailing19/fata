@@ -16,6 +16,7 @@ const commands = [
   ['node', ['--check', 'modules/match-engine.js']],
   ['node', ['--check', 'tools/e2e-test.js']],
   ['node', ['tools/invariant-tests.js']],
+  ['node', ['tools/worker-match-core-test.js']],
   ['node', ['tools/algo-test.js', '--lang', 'zh']],
   ['node', ['tools/algo-test.js', '--lang', 'en']],
   ['node', ['tools/evaluate-matching.js']]

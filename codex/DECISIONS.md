@@ -62,3 +62,12 @@
 - 验证：invariant 70/70；zh F1 94.1%；en F1 84.2%；Spearman ρ 0.902；E2E 15/15；`/api/audit/stats` 冒烟通过。
 - 部署：Worker 版本 `80fedc79-3fd0-422f-ac7a-cb851ea36f34`。
 - 遗留：`/api/github/issues` 旧创建路径仍保留 `_kv=2` 改写，主流程不受影响；后续按 `codex/ROADMAP-2026-08-07.md` 处理。
+
+## D-2026-08-07-03：Worker 硬化 + 成本采集
+
+- 决策：移除 `/api/github/issues` 旧拦截（不再重加密 `e/m/i`、不再强制 `_kv=2`、不再自动匹配）；废弃旧 seed 注入工具；`findMatchInPool` 纯逻辑抽到 `tools/worker-match-core.js` 并新增 37 项单测；beacon 增加 fetch keepalive 兜底；清理死配置；新增成本采集脚本。
+- 原因：R-15 会让旧工具继续产生无法匹配的数据；R-11 缺少本地 Worker 测试；beacon 与 Cloudflare PV 偏差过大。
+- 验证：invariant 70/70；Worker match-core 单测 37/37；zh F1 94.1%；en F1 84.2%；ρ 0.902；E2E 15/15。
+- 部署：Worker 版本 `0083d0e4-26c5-46f1-881d-6140132e359b`；Pages 已发布。
+- 成本：Cloudflare 用量已自动采集；Resend/SiliconFlow 缺本地凭据，待人工填写。
+- 快照：`codex/snapshots/2026-08-07-worker-hardening/`、`codex/snapshots/2026-08-07-final/`。
