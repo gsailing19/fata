@@ -107,6 +107,23 @@ body {
   font-size: 14px; color: var(--warm); margin: 0 0 20px;
   opacity: 0.85; line-height: 1.6; max-width: 420px; text-wrap: balance;
 }
+.awake-reason-wrap {
+  width: 100%; max-width: 480px; margin-bottom: 14px; text-align: left;
+}
+.awake-reason-label {
+  display: block; font-size: 12px; color: var(--text-subtle);
+  margin-bottom: 6px; font-family: var(--font-sans);
+}
+.awake-reason-select {
+  width: 100%; padding: 10px 12px; font-family: var(--font-sans);
+  font-size: 14px; color: var(--text); background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  outline: none; cursor: pointer; transition: border-color 0.25s var(--spring);
+}
+.awake-reason-select:focus {
+  border-color: var(--warm);
+  box-shadow: 0 0 0 4px rgba(196,122,74,0.1);
+}
 .landing-editor {
   width: 100%; max-width: 480px; margin-bottom: 20px;
 }
@@ -699,6 +716,16 @@ window.addEventListener('unhandledrejection', function(e) {
 
       'landing.placeholder': '今晚是什么让你醒着？',
       'landing.nightline': '现在是深夜。有人和你一样醒着——写下你想对那个人说的话。',
+      'landing.whyAwake': '今晚醒着的原因',
+      'landing.reasonPlaceholder': '选一个，或者先不选',
+      'reason.insomnia': '睡不着，脑子很清醒',
+      'reason.nightShift': '夜班 / 轮班',
+      'reason.overthinking': '想太多，停不下来',
+      'reason.livingAlone': '一个人住',
+      'reason.newCity': '刚到一个新城市',
+      'reason.wrongTimeZone': '时差打乱了白天黑夜',
+      'reason.creativeHours': '灵感都在夜里来',
+      'reason.justAwake': '没什么特别原因，就是醒着',
       'landing.prompt1': '房间里很安静，我还醒着，因为...',
       'landing.prompt2': '今晚放不下的一件事...',
       'landing.prompt3': '现在一定还有另一个人醒着，TA 在想...',
@@ -728,7 +755,7 @@ window.addEventListener('unhandledrejection', function(e) {
       'submit.sending': '正在把你的文字放进深夜...',
       'submit.retryable': '服务暂时繁忙，稍等再试就好',
 
-      'match.resonanceFallback': '你们在此刻的频率很接近。',
+      'match.resonanceFallback': '现在是凌晨两点，还有一个人醒着。你们在此刻的频率很接近。',
       'match.icebreaker1': '你当时在想什么？',
       'match.icebreaker2': '让TA推荐一首歌给你吧。',
       'match.icebreaker3': '告诉TA你那天的感受。',
@@ -738,8 +765,8 @@ window.addEventListener('unhandledrejection', function(e) {
       'match.writeToTA': '写信给 TA',
       'match.copyEmail': '复制邮箱',
       'match.writeAgain': '再写一封',
-      'match.emailSubject': '关于那件事——来自 fata 的引介',
-      'match.emailBody': '嘿。\n\nfata 说我们的文字频率很接近。\n\n',
+      'match.emailSubject': '凌晨两点，还有一个人醒着 — 来自 fata 的信',
+      'match.emailBody': '嘿。\n\n现在是凌晨两点，还有一个人醒着。\n\n',
 
       'nomatch.main': '你的文字留在深夜了。',
       'nomatch.sub': '另一个醒着的人读到后，会写信给你。可能需要一点时间。',
@@ -870,6 +897,16 @@ window.addEventListener('unhandledrejection', function(e) {
 
       'landing.placeholder': 'What\'s keeping you awake tonight?',
       'landing.nightline': 'It\'s late somewhere. Another person is awake right now. Write what you\'d say to them.',
+      'landing.whyAwake': 'Why are you awake tonight?',
+      'landing.reasonPlaceholder': 'Choose one, or skip',
+      'reason.insomnia': 'Can\'t sleep, mind is wide awake',
+      'reason.nightShift': 'Night shift / rotating hours',
+      'reason.overthinking': 'Overthinking, can\'t switch off',
+      'reason.livingAlone': 'Living alone',
+      'reason.newCity': 'New city',
+      'reason.wrongTimeZone': 'Wrong time zone',
+      'reason.creativeHours': 'Creative hours',
+      'reason.justAwake': 'No special reason, just awake',
       'landing.prompt1': 'The room is quiet, and I\'m awake because...',
       'landing.prompt2': 'The one thing I can\'t put down tonight is...',
       'landing.prompt3': 'Someone else is awake right now, thinking about...',
@@ -899,7 +936,7 @@ window.addEventListener('unhandledrejection', function(e) {
       'submit.sending': 'Carrying your words into the night...',
       'submit.retryable': 'Service is momentarily busy, try again shortly',
 
-      'match.resonanceFallback': 'Two awake people, close on the same frequency.',
+      'match.resonanceFallback': 'It\'s 2 a.m., and someone else is awake too. Your words are close on the same frequency.',
       'match.icebreaker1': 'What was the last thing you thought before opening fata?',
       'match.icebreaker2': 'Send them the song that fits this night.',
       'match.icebreaker3': 'Tell them what the quiet sounds like where you are.',
@@ -909,8 +946,8 @@ window.addEventListener('unhandledrejection', function(e) {
       'match.writeToTA': 'Write them a letter',
       'match.copyEmail': 'Copy email',
       'match.writeAgain': 'Write another letter',
-      'match.emailSubject': 'Someone else was awake too — a letter from fata',
-      'match.emailBody': 'Hey.\n\nfata found another awake person.\n\n',
+      'match.emailSubject': 'Someone else is awake at 2 a.m. — a letter from fata',
+      'match.emailBody': 'Hey.\n\nIt\'s 2 a.m. somewhere, and someone else is awake too.\n\n',
 
       'nomatch.main': 'Your words are here in the dark.',
       'nomatch.sub': 'When another awake person finds them, they\'ll write. It might take a little time.',
@@ -1259,6 +1296,21 @@ window.addEventListener('unhandledrejection', function(e) {
 
         <p class="landing-nightline">${t('landing.nightline')}</p>
 
+        <div class="awake-reason-wrap">
+          <label class="awake-reason-label" for="awake-reason">${t('landing.whyAwake')}</label>
+          <select id="awake-reason" class="awake-reason-select">
+            <option value="">${t('landing.reasonPlaceholder')}</option>
+            <option value="insomnia">${t('reason.insomnia')}</option>
+            <option value="night_shift">${t('reason.nightShift')}</option>
+            <option value="overthinking">${t('reason.overthinking')}</option>
+            <option value="living_alone">${t('reason.livingAlone')}</option>
+            <option value="new_city">${t('reason.newCity')}</option>
+            <option value="wrong_time_zone">${t('reason.wrongTimeZone')}</option>
+            <option value="creative_hours">${t('reason.creativeHours')}</option>
+            <option value="just_awake">${t('reason.justAwake')}</option>
+          </select>
+        </div>
+
         <div class="landing-editor">
           <textarea id="user-text" placeholder="${t('landing.placeholder')}"></textarea>
         </div>
@@ -1364,6 +1416,13 @@ window.addEventListener('unhandledrejection', function(e) {
     document.getElementById('allow-snippet-check').addEventListener('change', e => {
       state.allowSnippet = e.target.checked;
     });
+
+    const reasonSelect = document.getElementById('awake-reason');
+    if (reasonSelect) {
+      reasonSelect.addEventListener('change', e => {
+        sendBeaconEvent('select_reason', { reason: e.target.value });
+      });
+    }
 
     // 字数提示
     textarea.addEventListener('input', () => {
@@ -1472,6 +1531,10 @@ window.addEventListener('unhandledrejection', function(e) {
 
       // Compute email hash (for rate limiting/dedup)
       const emailHash = await sha256(email);
+      const awakeReason = (document.getElementById('awake-reason')?.value || '').trim();
+      let timezone = '';
+      try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (_) {}
+      const timezoneOffset = -new Date().getTimezoneOffset();
 
       // Call Worker /api/submit (plaintext over HTTPS, Worker encrypts for storage)
       const result = await APIClient.call('/api/submit', {
@@ -1479,6 +1542,9 @@ window.addEventListener('unhandledrejection', function(e) {
         lang: currentLang,
         allowSnippet: state.allowSnippet,
         tfidfEmbedding,
+        awakeReason,
+        timezone,
+        timezoneOffset,
         ...(window._fataTestMode ? { _test: true } : {})
       });
 
@@ -1554,10 +1620,15 @@ window.addEventListener('unhandledrejection', function(e) {
 
       const tfidfEmbedding = await MatchEngine._generateEmbedding(text);
       const emailHash = await sha256(email);
+      const awakeReason = (document.getElementById('awake-reason')?.value || '').trim();
+      let timezone = '';
+      try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (_) {}
+      const timezoneOffset = -new Date().getTimezoneOffset();
 
       const result = await APIClient.call('/api/submit', {
         text, email, emailHash,
-        lang: currentLang, allowSnippet: state.allowSnippet, tfidfEmbedding
+        lang: currentLang, allowSnippet: state.allowSnippet, tfidfEmbedding,
+        awakeReason, timezone, timezoneOffset
       });
 
 

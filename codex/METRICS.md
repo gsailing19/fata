@@ -1,14 +1,14 @@
 # fata 指标基线
 
-> 最后更新：2026-08-03
+> 最后更新：2026-08-07
 
 ## 当前基线
 
 | 指标 | 值 | 来源/日期 |
 |------|-----|-----------|
 | 每日审计 | 12/12 PASS | `tools/audit-logs/audit-latest.log`，2026-08-02 |
-| 真实链路 E2E | 14/14 PASS | `node tools/e2e-test.js`，2026-08-03 |
-| Worker 版本 | `16470b9b-a10a-48bb-ac92-fec717a70fd4` | wrangler deploy，2026-08-03（P1 后） |
+| 真实链路 E2E | 15/15 PASS | `node tools/e2e-test.js`，2026-08-07 |
+| Worker 版本 | `80fedc79-3fd0-422f-ac7a-cb851ea36f34` | wrangler deploy，2026-08-07（兼容路径清理 + 原因漏斗后） |
 | 历史敏感 Issue | 168 条已脱敏，剩余 sensitive=0 | 2026-08-03 清理复查 |
 | 匹配池 pending | 93（全部 seed） | 2026-08-02 审计 |
 | 匹配池 matched | 8 | 2026-08-02 审计 |
@@ -16,11 +16,17 @@
 | 站点 PV | 73（2026-08-01） | Cloudflare 统计 |
 | 站点 UV | 38（2026-08-01） | Cloudflare 统计 |
 | beacon page_view | 1（2026-08-01） | KV funnel，与 PV 不一致 |
-| 算法 invariant | 54/54 | `node tools/invariant-tests.js` |
+| 算法 invariant | 70/70 | `node tools/invariant-tests.js` |
 | 中文算法 F1 | 94.1%（1 个已知 FP） | `node tools/algo-test.js --lang zh` |
-| 英文算法 F1 | 80.0%（README 记录） | 需重新跑 `--lang en` 确认 |
+| 英文算法 F1 | 84.2%（3 个已知 FP） | `node tools/algo-test.js --lang en`，2026-08-07 |
 | 场景评估 Spearman | 0.902（强相关，等级重叠严重） | `node tools/evaluate-matching.js`，2026-08-03 |
-| 本地验证 | verify-local 全绿 | `node tools/verify-local.js`，2026-08-03 |
+| 本地验证 | verify-local 全绿 | `node tools/verify-local.js`，2026-08-07 |
+
+## 新增能力（2026-08-07）
+
+- `select_reason` 已进入 beacon 与 `/api/audit/stats`，可看原因标签漏斗。
+- 匹配引擎只处理 `_kv>=4` 候选；旧格式直接跳过并记录 debug。
+- E2E CI 提供手动 `workflow_dispatch` 入口，密钥缺失会失败而不是静默跳过。
 
 ## 待建立基线
 

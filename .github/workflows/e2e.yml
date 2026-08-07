@@ -1,0 +1,46 @@
+# Manual real-world E2E workflow.
+#
+# WARNING: this job intentionally writes real data:
+#   - submits test entries to the production Worker / API pool
+#   - creates and closes real GitHub Issues
+#   - creates a Match Issue and triggers real Resend test emails
+#
+# It is only triggered by manual workflow_dispatch. Do not add a schedule
+# without first defining test isolation and cost/cleanup controls.
+name: e2e
+
+on:
+  workflow_dispatch:
+    inputs:
+      worker_url:
+        description: 'Optional API base URL override (defaults to FATA_WORKER_URL repo variable, then https://fata.uk)'
+        required: false
+        type: string
+
+jobs:
+  real-e2e:
+    name: Real E2E (writes production pool, GitHub Issues, Resend emails)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Require FATA_HMAC_KEY
+        env:
+          FATA_HMAC_KEY: ${{ secrets.FATA_HMAC_KEY }}
+        run: |
+          if [[ -z "$FATA_HMAC_KEY" ]]; then
+            echo "::error title=Missing FATA_HMAC_KEY::Repository secret FATA_HMAC_KEY is required for real E2E; refusing to run."
+            exit 1
+          fi
+
+      - name: Run real E2E
+        env:
+          FATA_HMAC_KEY: ${{ secrets.FATA_HMAC_KEY }}
+          FATA_WORKER_URL: ${{ inputs.worker_url || vars.FATA_WORKER_URL || '' }}
+        run: node tools/e2e-test.js

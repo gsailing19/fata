@@ -1,6 +1,6 @@
 # fata v3 架构
 
-> 最后更新：2026-08-03。本文件描述当前代码和线上部署的架构，历史文档如 `state-stranger-matcher.md` 是 R4 规划，不代表现状。
+> 最后更新：2026-08-07。本文件描述当前代码和线上部署的架构，历史文档如 `state-stranger-matcher.md` 是 R4 规划，不代表现状。
 
 ## 数据流
 
@@ -12,7 +12,7 @@
   → 邮箱弹窗
   → PoWSolver：/api/bootstrap → 解 SHA-256 → /api/challenge 换 submit token
   → MatchEngine._generateEmbedding()：本地 TF-IDF 兜底向量
-  → APIClient.call('/api/submit')
+  → APIClient.call('/api/submit')（含 awakeReason、timezone、timezoneOffset）
   → Worker：BGE-M3 embedding（SiliconFlow）→ AES-GCM 加密 → KV + GitHub Issue
   → Worker findMatchInPool()：多通道评分 + MMR 重排
   → 匹配成功：DeepSeek 生成共振描述 → 服务端双邮件通知 → 关闭 Issue → Match Issue → KV 清理
@@ -69,3 +69,5 @@
 - 旧模块 `resend-retry.js`、`llm-fallback.js`、`model-loader.js` 已删除；`match-engine.js` 已精简为 TF-IDF 兜底。
 - `config/worker.js`、`config/wrangler.toml` 被 `.gitignore` 排除，但已纳入 `codex/private-worker/` 私有 git 备份。
 - beacon 使用唯一 key + 前缀统计，避免并发计数丢失；Cloudflare PV 仍可能高于 beacon（包含无 JS 流量）。
+- `select_reason` 事件按 reason 写入唯一 key，`/api/audit/stats` 返回原因分布。
+- 匹配引擎只处理 `_kv>=4` + FATA_DATA KV 候选；旧格式直接跳过并记录 debug。

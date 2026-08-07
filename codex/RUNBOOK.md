@@ -1,8 +1,14 @@
 # fata 运行手册
 
-> 最后更新：2026-08-03
+> 最后更新：2026-08-07
 
 ## 本地验证
+
+本地验证不需要密钥；E2E、审计或部署前先统一加载密钥入口：
+
+```bash
+source tools/load-secrets.sh
+```
 
 ```bash
 node tools/invariant-tests.js
@@ -11,6 +17,15 @@ node tools/algo-test.js --lang en
 node --check config/worker.js
 node tools/verify-local.js
 ```
+
+## 线上 E2E
+
+```bash
+source tools/load-secrets.sh
+node tools/e2e-test.js
+```
+
+该命令会真实写入线上池、创建/关闭 GitHub Issue、创建 Match Issue 并触发 Resend 测试邮件。只有需要验证完整匹配链路时运行。
 
 ## Worker 私有备份
 
@@ -23,7 +38,8 @@ node tools/verify-local.js
 ## 历史数据脱敏
 
 ```bash
-FATA_HMAC_KEY=... node tools/sanitize-legacy-issues.js
+source tools/load-secrets.sh
+node tools/sanitize-legacy-issues.js
 ```
 
 该工具按 30 req/min 限速处理旧 `_kv<=3` 敏感 Issue，运行约 6 分钟。
@@ -51,18 +67,31 @@ cd codex/snapshots/$(date +%F) && shasum -a 256 * > SNAPSHOT.sha256
 
 ```bash
 # 前端 Pages
+source tools/load-secrets.sh
 ./deploy.sh
 
-# Worker
+# Worker（生产改动前先运行 ./codex/backup-worker.sh）
 cd config && npx wrangler deploy
 ```
 
 ## Secrets（不写值，只记录清单）
 
+统一加载入口：`source tools/load-secrets.sh`
+
+- 优先读取 `~/.codex/secrets.env`（权限 600）。
+- 再补读 `.claude/settings.local.json` 的 `env` 中尚未设置的键，不覆盖已有环境变量。
+- 只在当前 shell 生效，不写入仓库。
+
+清单：
+
 - `GITHUB_PAT`
 - `RESEND_API_KEY`
 - `SILICONFLOW_API_KEY`
-- `HMAC_KEY`
+- `FATA_HMAC_KEY`
+- `CLOUDFLARE_API_TOKEN`
+- `ARK_API_KEY`
+- `ALIBABA_CLOUD_ACCESS_KEY_ID`
+- `ALIBABA_CLOUD_ACCESS_KEY_SECRET`
 - `ENCRYPTION_KEY`
 - `ALLOWED_ORIGINS`（非敏感）
 

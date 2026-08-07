@@ -38,6 +38,11 @@ const EMAIL_HASH_B = sha256(`e2e-b-${RUN_ID}@fata.test`);
 const TEXT_A = '最近失眠越来越严重了，不是不想睡，是躺下来脑子就开始转，越想越多，白天整个人都是飘的';
 const TEXT_B = '每天晚上都很清醒，白天却很困，快分不清白天和晚上了，脑子停不下来，已经连续一周凌晨三点才睡着';
 const TEXT_W = '最近总是一个人吃饭，周末也不知道去哪里，想找个人随便聊聊最近的生活';
+const AWAKE_REASON = 'insomnia';
+const TIMEZONE = (() => {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (_) { return 'UTC'; }
+})();
+const TIMEZONE_OFFSET = -new Date().getTimezoneOffset();
 
 // ===== 工具函数 =====
 
@@ -148,7 +153,7 @@ async function startSession() {
   return { token: chal.data.submitToken, expiresAt: chal.data.expiresAt };
 }
 
-async function submitText(token, text, email, emailHash) {
+async function submitText(token, text, email, emailHash, extra = {}) {
   const tfidfEmbedding = charBigramVector(text);
   const resp = await fetchJSON(`${WORKER}/api/submit`, {
     method: 'POST',
@@ -164,7 +169,11 @@ async function submitText(token, text, email, emailHash) {
       lang: 'zh',
       allowSnippet: true,
       tfidfEmbedding,
-      _test: true
+      awakeReason: AWAKE_REASON,
+      timezone: TIMEZONE,
+      timezoneOffset: TIMEZONE_OFFSET,
+      _test: true,
+      ...extra
     })
   });
   if (!isOK(resp)) {
@@ -270,6 +279,17 @@ async function main() {
     if (pendingNumbers.includes(resultA.issueNumber)) break;
   }
   check('A 的 Issue 在 pending 池中', pendingNumbers.includes(resultA.issueNumber), `#${resultA.issueNumber}`);
+  const issueA = await getIssue(resultA.issueNumber, sessionA.token);
+  let issueABody = {};
+  try { issueABody = JSON.parse(issueA.body || '{}'); } catch (_) {}
+  check(
+    'A 的 Issue 元数据包含醒着原因与时区',
+    issueABody.r === AWAKE_REASON &&
+      issueABody.tzo === TIMEZONE_OFFSET &&
+      typeof issueABody.tz === 'string' &&
+      issueABody.tz.length > 0,
+    JSON.stringify({ r: issueABody.r, tzo: issueABody.tzo, tz: issueABody.tz })
+  );
 
   console.log('\n── 用户 B：PoW + 提交 + 自动匹配 ──');
   const sessionB = await startSession();

@@ -21,7 +21,10 @@ const {
   getCoolingFactor,
   getEffectiveThreshold,
   charBigramVector,
-  wordBigramVector
+  wordBigramVector,
+  normalizeAwakeReason,
+  awakeOverlapMinutes,
+  calculateContextCompatibility
 } = require('./match-core.js');
 
 let passed = 0;
@@ -170,6 +173,78 @@ function assert(label, condition, detail) {
     calculateStyleCompatibility('active', 'unsure', 'en') === 0.6);
   assert('en: missing style = 0.5',
     calculateStyleCompatibility('', 'active', 'en') === 0.5);
+})();
+
+// ===== 醒着原因标签 =====
+
+(function awakeReasonNormalization() {
+  assert('reason: canonical passthrough "insomnia"',
+    normalizeAwakeReason('insomnia') === 'insomnia');
+  assert('reason: "night shift" → "night_shift"',
+    normalizeAwakeReason('night shift') === 'night_shift');
+  assert('reason: "cant_sleep" alias → "insomnia"',
+    normalizeAwakeReason('cant_sleep') === 'insomnia');
+  assert('reason: "jetlag" alias → "wrong_time_zone"',
+    normalizeAwakeReason('jetlag') === 'wrong_time_zone');
+  assert('reason: empty returns empty',
+    normalizeAwakeReason('') === '');
+  assert('reason: unknown label returns empty',
+    normalizeAwakeReason('not-a-real-reason') === '');
+})();
+
+// ===== 3 小时时区重叠 =====
+
+(function timezoneOverlap() {
+  assert('tz: same offset overlaps 360 minutes',
+    awakeOverlapMinutes(480, 480) === 360,
+    `overlap=${awakeOverlapMinutes(480, 480)}`);
+  assert('tz: 1 hour apart overlaps 300 minutes',
+    awakeOverlapMinutes(60, 120) === 300,
+    `overlap=${awakeOverlapMinutes(60, 120)}`);
+  assert('tz: UTC+9 vs UTC-11 overlaps 120 minutes',
+    awakeOverlapMinutes(540, -660) === 120,
+    `overlap=${awakeOverlapMinutes(540, -660)}`);
+  assert('tz: missing offset returns null',
+    awakeOverlapMinutes(null, 480) === null);
+})();
+
+// ===== 上下文兼容评分 =====
+
+(function contextCompatibility() {
+  assert('ctx: no context is neutral 0.5',
+    Math.abs(calculateContextCompatibility(null, null) - 0.5) < 0.0001);
+
+  const sameContext = { awakeReason: 'insomnia', timezoneOffset: 480 };
+  const farContext = { awakeReason: 'insomnia', timezoneOffset: -660 };
+  const differentReason = { awakeReason: 'night_shift', timezoneOffset: 480 };
+
+  assert('ctx: same reason + same timezone scores 1.0',
+    Math.abs(calculateContextCompatibility(sameContext, sameContext) - 1.0) < 0.0001,
+    `score=${calculateContextCompatibility(sameContext, sameContext)}`);
+  assert('ctx: same reason but weaker timezone overlap scores lower',
+    calculateContextCompatibility(sameContext, sameContext) > calculateContextCompatibility(sameContext, farContext),
+    `same=${calculateContextCompatibility(sameContext, sameContext)} far=${calculateContextCompatibility(sameContext, farContext)}`);
+  assert('ctx: different neutral reason scores lower than same reason',
+    calculateContextCompatibility(sameContext, sameContext) > calculateContextCompatibility(sameContext, differentReason),
+    `same=${calculateContextCompatibility(sameContext, sameContext)} diff=${calculateContextCompatibility(sameContext, differentReason)}`);
+})();
+
+// ===== calculateScore 上下文可选性 =====
+
+(function scoreContextNeutrality() {
+  const intent = { need: 'be heard', emo: 'lonely', topics: ['self growth'], style: 'responsive', signalDensity: 0.6 };
+  const emb = new Array(384).fill(0.1);
+  const noContext = calculateScore(emb, emb, intent, intent, 'en');
+  const neutralContext = calculateScore(emb, emb, intent, intent, 'en', '', '', { awakeReason: '', timezoneOffset: null }, { awakeReason: '', timezoneOffset: null });
+  assert('en: empty context leaves score unchanged',
+    Math.abs(noContext - neutralContext) < 0.000001,
+    `noContext=${noContext} neutral=${neutralContext}`);
+
+  const sameContext = { awakeReason: 'insomnia', timezoneOffset: 480 };
+  const matchedContext = calculateScore(emb, emb, intent, intent, 'en', '', '', sameContext, sameContext);
+  assert('en: matching context raises score',
+    matchedContext > noContext,
+    `noContext=${noContext.toFixed(4)} matched=${matchedContext.toFixed(4)}`);
 })();
 
 // ===== 需求互补双向等待惩罚（关键不变量） =====

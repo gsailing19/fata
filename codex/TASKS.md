@@ -1,6 +1,6 @@
 # fata 任务看板
 
-> 最后更新：2026-08-04。状态：`[ ]` 待办 / `[~]` 进行中 / `[x]` 已完成。
+> 最后更新：2026-08-07。状态：`[ ]` 待办 / `[~]` 进行中 / `[x]` 已完成。
 
 ## 框架与基线（2026-08-03）
 
@@ -16,7 +16,10 @@
 - `[x]` 采访确认 v1 人群决策（8 项，见 `codex/AUDIENCE.md`）。
 - `[x]` 把英文定位与首页/Onboarding 文案改造成 “2 a.m.” 叙事（index.html + about.html + README）。
 - `[x]` 2026-08-04：推送 main 并部署线上（Pages + Worker，Worker 版本 `80431684-9950-4abc-9895-0b1eadc2155f`）。
-- `[ ]` 把醒着原因标签与 3 小时时区窗口接入匹配特征（涉及 Worker，需跑 E2E）。
+- `[x]` 把醒着原因标签与 3 小时时区窗口接入匹配特征（涉及 Worker，E2E 15/15 验证）。
+- `[x]` Worker 自动匹配通知邮件改成 2 a.m. 信笺文案（中英邮件与前端 mailto 兜底同步）。
+- `[x]` 移除匹配引擎 `_kv<=3` 历史兼容读取（`findMatchInPool` 与旧邮件重试分支）。
+- `[x]` `select_reason` 原因标签接入 beacon 存储与审计统计。
 - `[ ]` 用真实用户数据验证细分人群优先级，淘汰无效子人群。
 
 ## P0 — 必须先修
@@ -97,8 +100,15 @@
 - `[x]` 冷启动验证清单：`codex/COLD-START.md`。
 - `[x]` 成本台账：`codex/COSTS.md`。
 - `[ ]` 获取第一批真实用户并完成真人匹配回测（已决定延期，等待真实流量/运营入口触发，不阻塞工程任务）。
-- `[ ]` CI 纳入 E2E（需要安全凭据策略，当前不放进公开 CI）。
+- `[~]` CI 纳入 E2E：已建 `workflow_dispatch` 工作流脚手架，待配置受保护 secrets/私有 `fata-ops` 仓库。
 - `[ ]` 根据真实反馈决定 Model2Vec、PWA 安装引导、高级信纸等路线图项。
+
+## P2.5 — 运维与可观测性（2026-08-07）
+
+- `[x]` 统一密钥加载入口：`tools/load-secrets.sh`，`~/.codex/secrets.env` 为 Codex 基础层。
+- `[x]` E2E CI 工作流脚手架：`.github/workflows/e2e.yml`，仅手动触发。
+- `[x]` 成本台账工具：`tools/cost-ledger.js` + `codex/COSTS.md` 月度模板。
+- `[x]` 延迟项路线图：`codex/ROADMAP-2026-08-07.md`（Worker 单测、观测、算法校准）。
 
 ## 已完成基线
 

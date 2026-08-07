@@ -31,6 +31,22 @@ const ALGORITHM_CONFIG = {
       relation_aim_compat:{ value: 0.10, _desc: "关系意图兼容" }
     }
   },
+  context: {
+    weight: { value: 0.08, _desc: "醒着原因/时区上下文在复合得分上的倍率权重；无上下文时倍率为 1.0" },
+    min_timezone_overlap_minutes: { value: 180, _desc: "双方醒着时段至少重叠 3 小时（22:00-04:00 本地夜间窗口）" },
+    reason: {
+      same: { value: 1.0, _desc: "相同醒着原因" },
+      compatible: { value: 0.85, _desc: "相近醒着原因" },
+      neutral: { value: 0.5, _desc: "无标签或标签不相关" }
+    },
+    timezone: {
+      full: { value: 1.0, _desc: "重叠 >= 3 小时" },
+      good: { value: 0.7, _desc: "重叠 >= 2 小时" },
+      partial: { value: 0.4, _desc: "重叠 >= 1 小时" },
+      weak: { value: 0.2, _desc: "重叠 < 1 小时" },
+      unknown: { value: 0.5, _desc: "任一时区缺失，不惩罚" }
+    }
+  },
   thresholds: {
     cosine_threshold: { value: 0.46, _desc: "基础匹配门槛（冷却叠加后生效：小池≈0.48 / 中池≈0.50 / 大池≈0.53）。2026-06-17 从 0.55 修正——此前阈值过高导致匹配阻断" }
   },
@@ -88,6 +104,104 @@ const ALGORITHM_CONFIG = {
     }
   }
 };
+
+// 醒着原因标签：与前端选项保持一致，用于人群验证与上下文评分
+const AWAKE_REASONS = [
+  'insomnia',
+  'night_shift',
+  'overthinking',
+  'living_alone',
+  'new_city',
+  'wrong_time_zone',
+  'creative_hours',
+  'just_awake'
+];
+
+const REASON_COMPATIBLE_PAIRS = [
+  ['insomnia', 'overthinking'],
+  ['night_shift', 'wrong_time_zone'],
+  ['living_alone', 'new_city'],
+  ['new_city', 'wrong_time_zone'],
+  ['creative_hours', 'overthinking']
+];
+
+function normalizeAwakeReason(raw) {
+  if (!raw) return '';
+  const s = String(raw).trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (AWAKE_REASONS.includes(s)) return s;
+  const alias = {
+    'nightshift': 'night_shift',
+    'night_shift_worker': 'night_shift',
+    'cant_sleep': 'insomnia',
+    'can_t_sleep': 'insomnia',
+    'moving_to_new_city': 'new_city',
+    'timezone': 'wrong_time_zone',
+    'jetlag': 'wrong_time_zone',
+    'jet_lag': 'wrong_time_zone'
+  };
+  return alias[s] || '';
+}
+
+function awakeOverlapMinutes(offsetA, offsetB) {
+  if (!Number.isFinite(offsetA) || !Number.isFinite(offsetB)) return null;
+  const intervals = [];
+  const addIntervals = (offset, id) => {
+    const shift = ((Math.round(offset) % 1440) + 1440) % 1440;
+    const starts = [((1320 - shift) % 1440 + 1440) % 1440, ((0 - shift) % 1440 + 1440) % 1440];
+    const lengths = [120, 240];
+    for (let i = 0; i < starts.length; i++) {
+      const s = starts[i];
+      const len = lengths[i];
+      for (let day = 0; day < 2; day++) {
+        intervals.push({ id, s: s + day * 1440, e: s + len + day * 1440 });
+      }
+    }
+  };
+  addIntervals(offsetA, 'a');
+  addIntervals(offsetB, 'b');
+
+  const aIntervals = intervals.filter(i => i.id === 'a');
+  const bIntervals = intervals.filter(i => i.id === 'b');
+  let overlap = 0;
+  for (const ia of aIntervals) {
+    for (const ib of bIntervals) {
+      const s = Math.max(ia.s, ib.s);
+      const e = Math.min(ia.e, ib.e);
+      if (e > s) overlap += e - s;
+    }
+  }
+  return Math.min(overlap / 2, 360);
+}
+
+function calculateContextCompatibility(userContext, otherContext) {
+  const ctx = ALGORITHM_CONFIG.context;
+  const a = userContext || {};
+  const b = otherContext || {};
+  const reasonA = normalizeAwakeReason(a.awakeReason || '');
+  const reasonB = normalizeAwakeReason(b.awakeReason || '');
+
+  let reasonScore = ctx.reason.neutral.value;
+  if (reasonA && reasonB && reasonA !== 'just_awake' && reasonB !== 'just_awake') {
+    if (reasonA === reasonB) {
+      reasonScore = ctx.reason.same.value;
+    } else if (REASON_COMPATIBLE_PAIRS.some(p => p.includes(reasonA) && p.includes(reasonB))) {
+      reasonScore = ctx.reason.compatible.value;
+    }
+  }
+
+  const offsetA = Number.isFinite(a.timezoneOffset) ? a.timezoneOffset : null;
+  const offsetB = Number.isFinite(b.timezoneOffset) ? b.timezoneOffset : null;
+  let timezoneScore = ctx.timezone.unknown.value;
+  if (offsetA !== null && offsetB !== null) {
+    const overlap = awakeOverlapMinutes(offsetA, offsetB);
+    if (overlap >= 180) timezoneScore = ctx.timezone.full.value;
+    else if (overlap >= 120) timezoneScore = ctx.timezone.good.value;
+    else if (overlap >= 60) timezoneScore = ctx.timezone.partial.value;
+    else timezoneScore = ctx.timezone.weak.value;
+  }
+
+  return reasonScore * 0.55 + timezoneScore * 0.45;
+}
 
 // ===== 算法核心函数 =====
 
@@ -267,7 +381,7 @@ function inferIntentFromText(text, lang) {
   return { need, emo, depth, style };
 }
 
-function calculateScore(userEmb, otherEmb, userIntent, otherIntent, lang, userText, otherText) {
+function calculateScore(userEmb, otherEmb, userIntent, otherIntent, lang, userText, otherText, userContext, otherContext) {
   const cfg = ALGORITHM_CONFIG.scoring_weights;
   const L = (ALGORITHM_CONFIG.labels[lang] || ALGORITHM_CONFIG.labels.zh);
   const cosineSim = cosineSimilarity(userEmb, otherEmb);
@@ -309,6 +423,10 @@ function calculateScore(userEmb, otherEmb, userIntent, otherIntent, lang, userTe
   const uNeed = normalizeNeed((uIntent && uIntent.need) || '', lang);
   const oNeed = normalizeNeed((oIntent && oIntent.need) || '', lang);
   if (uNeed === L.need.be_heard && oNeed === L.need.be_heard) score *= 0.70;
+
+  const contextCompat = calculateContextCompatibility(userContext, otherContext);
+  const contextWeight = ALGORITHM_CONFIG.context.weight.value;
+  score *= (1 - contextWeight + contextWeight * contextCompat);
 
   return score;
 }
@@ -582,5 +700,8 @@ module.exports = {
   getEffectiveThreshold,
   textToVector,
   wordBigramVector,
-  charBigramVector
+  charBigramVector,
+  normalizeAwakeReason,
+  awakeOverlapMinutes,
+  calculateContextCompatibility
 };

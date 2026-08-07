@@ -1,6 +1,6 @@
 # fata 风险台账
 
-> 最后更新：2026-08-03。状态：open / mitigated / fixed / verified
+> 最后更新：2026-08-07。状态：open / mitigated / fixed / verified
 
 | ID | 严重度 | 风险 | 证据 | 状态 |
 |----|--------|------|------|------|
@@ -17,6 +17,9 @@
 | R-11 | P2 | 无本地 Worker 测试/CI，回归只能依赖线上 E2E | `codex/VERIFY.md` | mitigated |
 | R-12 | P2 | 匹配池仍无真实用户 pending，冷启动和真实匹配未验证 | `tools/audit-logs/audit-latest.log` | mitigated |
 | R-13 | P3 | `max_match_count` 等配置为死代码，优化指标缺失 | `ideas-todo.md:36` | open |
+| R-14 | P2 | 新增时区硬过滤：双方都有偏移且重叠不足 3 小时时直接跳过，小池匹配率可能下降；旧 seed 无偏移不受影响 | `tools/match-core.js`、`config/worker.js` | open |
+| R-15 | P2 | `/api/github/issues` 旧创建路径仍会把 Issue 写成 `_kv=2`，若仍有客户端走该路径将不再参与匹配 | `config/worker.js:314-330` | open |
+| R-16 | P2 | E2E CI 仍是手动工作流，未配置受保护 secrets/私有仓库，误触发会污染线上池 | `.github/workflows/e2e.yml` | mitigated |
 
 ## 风险更新规则
 
